@@ -26,9 +26,8 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await login(email, password);
+      const user = await login(email, password);
       toast.success('Welcome back!');
-      const user = JSON.parse(localStorage.getItem('taskant_user') || '{}');
       router.push(user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed';

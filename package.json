@@ -4,34 +4,46 @@
   "private": true,
   "description": "TaskAnt - An On-Demand Local Task & Service Marketplace Platform",
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:client": "next dev --port 3000",
-    "dev:server": "npm run dev --prefix server",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "next build",
-    "build:server": "npm run build --prefix server",
-    "start:client": "next start --port 3000",
-    "start": "npm run start --prefix server",
-    "seed": "npm run seed --prefix server"
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx server/src/seed/index.ts"
   },
   "dependencies": {
     "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.469.0",
+    "mongoose": "^8.9.5",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hot-toast": "^2.4.1",
-    "socket.io-client": "^4.8.1"
+    "serverless-http": "^3.2.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "uuid": "^11.0.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
-    "@types/node": "^20.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.25",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.10.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "concurrently": "^9.1.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.0.0"
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
   }
 }

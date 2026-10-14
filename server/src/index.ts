@@ -1,29 +1,25 @@
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { createServer } from 'http';
-import { config } from './config/index.js';
-import { initMemoryStore } from './db/memoryStore.js';
-import { errorHandler } from './middleware/validate.js';
-import { setSocketServer } from './services/notifications.js';
-import { setupSocket } from './socket/index.js';
-import { seedOnStartup } from './seed/startup.js';
+import { config } from './config/index';
+import { errorHandler } from './middleware/validate';
+import { seedOnStartup } from './seed/startup';
 
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import taskRoutes from './routes/tasks.js';
-import bidRoutes from './routes/bids.js';
-import messageRoutes from './routes/messages.js';
-import notificationRoutes from './routes/notifications.js';
-import paymentRoutes from './routes/payments.js';
-import reviewRoutes from './routes/reviews.js';
-import verificationRoutes from './routes/verification.js';
-import reportRoutes from './routes/reports.js';
-import adminRoutes from './routes/admin.js';
-import dashboardRoutes from './routes/dashboard.js';
+import authRoutes from './routes/auth';
+import userRoutes from './routes/users';
+import taskRoutes from './routes/tasks';
+import bidRoutes from './routes/bids';
+import messageRoutes from './routes/messages';
+import notificationRoutes from './routes/notifications';
+import paymentRoutes from './routes/payments';
+import reviewRoutes from './routes/reviews';
+import verificationRoutes from './routes/verification';
+import reportRoutes from './routes/reports';
+import adminRoutes from './routes/admin';
+import dashboardRoutes from './routes/dashboard';
 
-const app = express();
-const httpServer = createServer(app);
+export const app = express();
+app.set('trust proxy', 1);
 
 app.use(cors({ origin: config.clientUrl, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
@@ -54,17 +50,9 @@ app.use('/api/dashboard', dashboardRoutes);
 
 app.use(errorHandler);
 
-async function start() {
-  initMemoryStore();
-  await seedOnStartup();
+let initialization: Promise<void> | undefined;
 
-  const io = setupSocket(httpServer);
-  setSocketServer(io);
-
-  httpServer.listen(config.port, () => {
-    console.log(`🐜 TaskAnt API running on http://localhost:${config.port}`);
-    console.log(`📦 Using in-memory database (persists to server/data/store.json)`);
-  });
+export function initializeApi(): Promise<void> {
+  initialization ??= seedOnStartup();
+  return initialization;
 }
-
-start().catch(console.error);

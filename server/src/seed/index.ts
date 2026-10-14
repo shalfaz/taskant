@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { memoryDb, initMemoryStore } from '../db/memoryStore.js';
+import { memoryDb, initMemoryStore } from '../db/memoryStore';
 async function seed(): Promise<void> {
   initMemoryStore();
 

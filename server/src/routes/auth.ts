@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { body } from 'express-validator';
-import { memoryDb } from '../db/memoryStore.js';
-import { hashPassword, comparePassword, signToken, toPublicUser } from '../utils/auth.js';
-import { validate } from '../middleware/validate.js';
-import { authenticate } from '../middleware/auth.js';
-import type { AuthRequest } from '../types/index.js';
+import { memoryDb } from '../db/memoryStore';
+import { hashPassword, comparePassword, signToken, toPublicUser } from '../utils/auth';
+import { validate } from '../middleware/validate';
+import { authenticate } from '../middleware/auth';
+import type { AuthRequest } from '../types/index';
 
 const router = Router();
 

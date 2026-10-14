@@ -1,9 +1,9 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
-import { verifyToken } from '../utils/auth.js';
-import { config } from '../config/index.js';
-import { memoryDb } from '../db/memoryStore.js';
-import { createNotification } from '../services/notifications.js';
+import { verifyToken } from '../utils/auth';
+import { config } from '../config/index';
+import { memoryDb } from '../db/memoryStore';
+import { createNotification } from '../services/notifications';
 
 const onlineUsers = new Map<string, string>();
 

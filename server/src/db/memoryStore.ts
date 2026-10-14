@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   IUser,
@@ -12,10 +11,9 @@ import type {
   IReview,
   IVerification,
   IReport,
-} from '../types/index.js';
+} from '../types/index';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = path.join(process.cwd(), 'server', 'data');
 const DB_FILE = path.join(DATA_DIR, 'store.json');
 
 interface Store {
@@ -50,14 +48,20 @@ export function isUsingMemoryStore(): boolean {
 }
 
 export function loadStore(): Store {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      store = JSON.parse(raw) as Store;
-    }
-  } catch {
+  if (!fs.existsSync(DB_FILE)) {
     store = emptyStore();
+    return store;
   }
+
+  try {
+    const raw = fs.readFileSync(DB_FILE, 'utf-8');
+    store = JSON.parse(raw) as Store;
+  } catch (error) {
+    throw new Error(`Unable to load the existing TaskAnt data store at ${DB_FILE}`, {
+      cause: error,
+    });
+  }
+
   return store;
 }
 
