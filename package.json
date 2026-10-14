@@ -5,13 +5,29 @@
   "description": "TaskAnt - An On-Demand Local Task & Service Marketplace Platform",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:client": "npm run dev --prefix client",
+    "dev:client": "next dev --port 3000",
     "dev:server": "npm run dev --prefix server",
-    "build": "npm run build --prefix client && npm run build --prefix server",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "next build",
+    "build:server": "npm run build --prefix server",
+    "start:client": "next start --port 3000",
     "start": "npm run start --prefix server",
     "seed": "npm run seed --prefix server"
   },
+  "dependencies": {
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "16.3.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.0.0"
   }
 }

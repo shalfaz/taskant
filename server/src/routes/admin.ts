@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { body } from 'express-validator';
 import { memoryDb } from '../db/memoryStore.js';
 import { toPublicUser } from '../utils/auth.js';
@@ -68,7 +69,7 @@ router.patch(
   '/verifications/:id',
   [body('status').isIn(['Verified', 'Rejected'])],
   validate,
-  (req, res) => {
+  (req: AuthRequest, res: Response) => {
     const verification = memoryDb.verifications.update(req.params.id, {
       status: req.body.status,
       adminNotes: req.body.adminNotes,

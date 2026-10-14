@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/index.js';
 import type { IUser, PublicUser } from '../types/index.js';
@@ -13,7 +13,7 @@ export async function comparePassword(password: string, hash: string): Promise<b
 
 export function signToken(userId: string, role: 'user' | 'admin'): string {
   return jwt.sign({ id: userId, role }, config.jwtSecret, {
-    expiresIn: config.jwtExpiresIn,
+    expiresIn: config.jwtExpiresIn as SignOptions['expiresIn'],
   });
 }
 

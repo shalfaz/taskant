@@ -7,7 +7,7 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   jwtSecret: process.env.JWT_SECRET || 'taskant-dev-secret-change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
   mongoUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/taskant',
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),

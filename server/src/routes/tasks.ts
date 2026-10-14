@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { body, query } from 'express-validator';
 import { memoryDb } from '../db/memoryStore.js';
 import { toPublicUser } from '../utils/auth.js';
@@ -112,7 +113,7 @@ router.post(
     body('budget').isFloat({ min: 1 }),
   ],
   validate,
-  (req: AuthRequest, res) => {
+  (req: AuthRequest, res: Response) => {
     const task = memoryDb.tasks.create({
       title: req.body.title,
       description: req.body.description,

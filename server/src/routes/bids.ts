@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { body } from 'express-validator';
 import { memoryDb } from '../db/memoryStore.js';
 import { toPublicUser } from '../utils/auth.js';
@@ -43,7 +44,7 @@ router.post(
     body('estimatedCompletion').trim().notEmpty(),
   ],
   validate,
-  (req: AuthRequest, res) => {
+  (req: AuthRequest, res: Response) => {
     const task = memoryDb.tasks.findById(req.body.taskId);
     if (!task) {
       res.status(404).json({ message: 'Task not found' });

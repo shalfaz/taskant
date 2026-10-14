@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { body } from 'express-validator';
 import { memoryDb } from '../db/memoryStore.js';
 import { toPublicUser } from '../utils/auth.js';
@@ -70,7 +71,7 @@ router.post(
   authenticate,
   [body('taskId').notEmpty(), body('content').trim().notEmpty()],
   validate,
-  (req: AuthRequest, res) => {
+  (req: AuthRequest, res: Response) => {
     const { taskId, content, attachment } = req.body;
     if (!canAccessTask(req.user!.id, taskId)) {
       res.status(403).json({ message: 'Access denied' });
