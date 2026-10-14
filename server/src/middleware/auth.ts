@@ -1,7 +1,7 @@
 import type { Response, NextFunction } from 'express';
-import type { AuthRequest } from '../types/index.js';
-import { verifyToken } from '../utils/auth.js';
-import { memoryDb } from '../db/memoryStore.js';
+import type { AuthRequest } from '../types/index';
+import { verifyToken } from '../utils/auth';
+import { memoryDb } from '../db/memoryStore';
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;

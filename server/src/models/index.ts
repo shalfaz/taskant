@@ -3,7 +3,7 @@ import type {
   VerificationStatus,
   TaskStatus,
   TaskCategory,
-} from '../types/index.js';
+} from '../types/index';
 
 export interface UserDocument extends Document {
   fullName: string;

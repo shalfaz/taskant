@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import type { Response } from 'express';
 import { body, query } from 'express-validator';
-import { memoryDb } from '../db/memoryStore.js';
-import { toPublicUser } from '../utils/auth.js';
-import { authenticate, optionalAuth } from '../middleware/auth.js';
-import { validate } from '../middleware/validate.js';
-import { TASK_CATEGORIES } from '../config/index.js';
-import type { AuthRequest, ITask } from '../types/index.js';
+import { memoryDb } from '../db/memoryStore';
+import { toPublicUser } from '../utils/auth';
+import { authenticate, optionalAuth } from '../middleware/auth';
+import { validate } from '../middleware/validate';
+import { TASK_CATEGORIES } from '../config/index';
+import type { AuthRequest, ITask } from '../types/index';
 
 const router = Router();
 

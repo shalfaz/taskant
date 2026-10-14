@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { memoryDb } from '../db/memoryStore.js';
-import { authenticate } from '../middleware/auth.js';
-import type { AuthRequest } from '../types/index.js';
+import { memoryDb } from '../db/memoryStore';
+import { authenticate } from '../middleware/auth';
+import type { AuthRequest } from '../types/index';
 
 const router = Router();
 

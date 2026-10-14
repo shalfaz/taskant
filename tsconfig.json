@@ -28,8 +28,9 @@
     "app/**/*.tsx",
     "client/src/**/*.ts",
     "client/src/**/*.tsx",
+    "server/src/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "client/node_modules", "server"]
+  "exclude": ["node_modules", "client/node_modules"]
 }

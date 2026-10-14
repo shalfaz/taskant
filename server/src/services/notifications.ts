@@ -1,4 +1,4 @@
-import { memoryDb } from '../db/memoryStore.js';
+import { memoryDb } from '../db/memoryStore';
 import type { Server as SocketServer } from 'socket.io';
 
 let io: SocketServer | null = null;

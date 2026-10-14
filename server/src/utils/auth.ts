@@ -1,7 +1,7 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { config } from '../config/index.js';
-import type { IUser, PublicUser } from '../types/index.js';
+import { config } from '../config/index';
+import type { IUser, PublicUser } from '../types/index';
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
