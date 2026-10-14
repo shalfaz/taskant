@@ -1,8 +1,12 @@
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, PlusCircle, ListTodo, CheckSquare, Search,
-  MessageSquare, Bell, CreditCard, Star, Shield, User, Menu, X, LogOut, Settings
+  MessageSquare, Bell, CreditCard, Star, Shield, User, Menu, X, LogOut
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,10 +34,10 @@ const adminLinks = [
   { to: '/admin/reports', icon: Shield, label: 'Reports' },
 ];
 
-export default function DashboardLayout() {
+export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unread, setUnread] = useState(0);
 
@@ -41,9 +45,11 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     if (user && !isAdmin) {
-      notificationsApi.list().then((res) => setUnread(res.data.unreadCount)).catch(() => {});
+      notificationsApi.list().then((res) => setUnread(res.data.unreadCount)).catch((error: unknown) => {
+        console.error('Unable to load notifications', error);
+      });
     }
-  }, [user, isAdmin, location.pathname]);
+  }, [user, isAdmin, pathname]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -55,7 +61,7 @@ export default function DashboardLayout() {
       {/* Sidebar */}
       <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-100">
-          <Link to="/"><Logo size="sm" /></Link>
+          <Link href="/"><Logo size="sm" /></Link>
           <button className="lg:hidden p-1" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5" />
           </button>
@@ -64,11 +70,11 @@ export default function DashboardLayout() {
         <nav className="p-3 space-y-0.5 overflow-y-auto max-h-[calc(100vh-8rem)]">
           {links.map((link) => {
             const Icon = link.icon;
-            const active = location.pathname === link.to;
+            const active = pathname === link.to;
             return (
               <Link
                 key={link.to}
-                to={link.to}
+                href={link.to}
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -95,7 +101,7 @@ export default function DashboardLayout() {
             </div>
           </div>
           <button
-            onClick={() => { logout(); navigate('/'); }}
+            onClick={() => { logout(); router.push('/'); }}
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
           >
             <LogOut className="w-4 h-4" /> Log Out
@@ -110,10 +116,10 @@ export default function DashboardLayout() {
             <Menu className="w-6 h-6" />
           </button>
           <h1 className="text-lg font-semibold text-gray-900 capitalize">
-            {links.find((l) => l.to === location.pathname)?.label || 'TaskAnt'}
+            {links.find((l) => l.to === pathname)?.label || 'TaskAnt'}
           </h1>
         </header>
-        <main className="p-4 lg:p-8"><Outlet /></main>
+        <main className="p-4 lg:p-8">{children}</main>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@
   "private": true,
   "description": "TaskAnt - An On-Demand Local Task & Service Marketplace Platform",
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev": "concurrently --kill-others-on-fail \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "next dev --port 3000",
     "dev:server": "npm run dev --prefix server",
     "build": "npm run build:client && npm run build:server",
@@ -15,9 +15,13 @@
     "seed": "npm run seed --prefix server"
   },
   "dependencies": {
+    "axios": "^1.7.9",
+    "lucide-react": "^0.469.0",
     "next": "16.3.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-hot-toast": "^2.4.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",

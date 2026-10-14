@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { MapPin, Clock, DollarSign } from 'lucide-react';
+import Link from 'next/link';
+import { MapPin, Clock } from 'lucide-react';
 import type { Task } from '../types';
 import { Badge, VerifiedBadge, StarRating } from './ui/Card';
 import { formatCurrency, formatDate, timeAgo } from '../utils/format';
@@ -54,7 +54,7 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
 
       {showActions && (
         <div className="mt-4">
-          <Link to={`/tasks/${task._id}`}>
+          <Link href={`/tasks/${task._id}`}>
             <Button variant="outline" className="w-full">View Details</Button>
           </Link>
         </div>

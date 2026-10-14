@@ -9,7 +9,7 @@ const onlineUsers = new Map<string, string>();
 
 export function setupSocket(httpServer: HttpServer): Server {
   const io = new Server(httpServer, {
-    cors: { origin: [config.clientUrl, 'http://localhost:5173'], credentials: true },
+    cors: { origin: config.clientUrl, credentials: true },
   });
 
   io.use((socket, next) => {

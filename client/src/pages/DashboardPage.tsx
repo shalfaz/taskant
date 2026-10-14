@@ -1,5 +1,7 @@
+'use client';
+
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { PlusCircle, ListTodo, CheckSquare, Bell, DollarSign, Star } from 'lucide-react';
 import { dashboardApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,7 +46,7 @@ export default function DashboardPage() {
           <h2 className="text-2xl font-bold text-gray-900">Welcome, {user?.fullName.split(' ')[0]}!</h2>
           <p className="text-gray-500 mt-1">Manage your posted tasks, accepted work, and earnings</p>
         </div>
-        <Link to="/post-task"><Button><PlusCircle className="w-4 h-4" /> Post a Task</Button></Link>
+        <Link href="/post-task"><Button><PlusCircle className="w-4 h-4" /> Post a Task</Button></Link>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -65,7 +67,7 @@ export default function DashboardPage() {
         <Card>
           <div className="px-6 py-4 border-b flex justify-between items-center">
             <h3 className="font-semibold">My Posted Tasks</h3>
-            <Link to="/my-tasks/posted" className="text-sm text-brand-600 hover:underline">View all</Link>
+            <Link href="/my-tasks/posted" className="text-sm text-brand-600 hover:underline">View all</Link>
           </div>
           <CardBody>
             {data.recentPosted.length === 0 ? (
@@ -73,7 +75,7 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {data.recentPosted.map((t) => (
-                  <Link key={t._id} to={`/tasks/${t._id}`} className="block p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
+                  <Link key={t._id} href={`/tasks/${t._id}`} className="block p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
                     <p className="font-medium text-sm">{t.title}</p>
                     <p className="text-xs text-gray-500 mt-1">{t.status} · {t.location}</p>
                   </Link>
@@ -86,7 +88,7 @@ export default function DashboardPage() {
         <Card>
           <div className="px-6 py-4 border-b flex justify-between items-center">
             <h3 className="font-semibold">My Accepted Tasks</h3>
-            <Link to="/my-tasks/accepted" className="text-sm text-brand-600 hover:underline">View all</Link>
+            <Link href="/my-tasks/accepted" className="text-sm text-brand-600 hover:underline">View all</Link>
           </div>
           <CardBody>
             {data.recentAccepted.length === 0 ? (
@@ -94,7 +96,7 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {data.recentAccepted.map((t) => (
-                  <Link key={t._id} to={`/tasks/${t._id}`} className="block p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
+                  <Link key={t._id} href={`/tasks/${t._id}`} className="block p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
                     <p className="font-medium text-sm">{t.title}</p>
                     <p className="text-xs text-gray-500 mt-1">{t.status} · {t.location}</p>
                   </Link>
@@ -111,7 +113,7 @@ export default function DashboardPage() {
           <CardBody>
             <div className="space-y-3">
               {data.pendingBids.map((b) => (
-                <Link key={b._id} to={`/tasks/${b.taskId}`} className="flex justify-between p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
+                <Link key={b._id} href={`/tasks/${b.taskId}`} className="flex justify-between p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
                   <div>
                     <p className="font-medium text-sm">{b.task?.title}</p>
                     <p className="text-xs text-gray-500">Your bid: {formatCurrency(b.amount)}</p>
@@ -127,7 +129,7 @@ export default function DashboardPage() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Available Tasks Near You</h3>
-          <Link to="/tasks" className="text-sm text-brand-600 hover:underline">Browse all</Link>
+          <Link href="/tasks" className="text-sm text-brand-600 hover:underline">Browse all</Link>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           {data.availableTasks.map((t) => <TaskCard key={t._id} task={t} />)}

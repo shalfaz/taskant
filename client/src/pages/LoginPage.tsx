@@ -1,5 +1,8 @@
+'use client';
+
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/ui/Input';
@@ -8,7 +11,7 @@ import Logo from '../components/Logo';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +29,7 @@ export default function LoginPage() {
       await login(email, password);
       toast.success('Welcome back!');
       const user = JSON.parse(localStorage.getItem('taskant_user') || '{}');
-      navigate(user.role === 'admin' ? '/admin' : '/dashboard');
+      router.push(user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed';
       toast.error(msg);
@@ -61,7 +64,7 @@ export default function LoginPage() {
             <Button type="submit" loading={loading} className="w-full">Sign In</Button>
           </form>
           <p className="mt-6 text-center text-sm text-gray-500">
-            Don't have an account? <Link to="/register" className="text-brand-600 font-medium hover:underline">Sign up</Link>
+            Don&apos;t have an account? <Link href="/register" className="text-brand-600 font-medium hover:underline">Sign up</Link>
           </p>
         </div>
       </div>
