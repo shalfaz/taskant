@@ -19,9 +19,9 @@ export default function AboutPage() {
           <li>Receiving parcels when nobody is available</li>
           <li>Purchasing local products from specific areas</li>
           <li>Submitting or collecting official documents</li>
-          <li>Visiting offices on someone's behalf</li>
+          <li>Visiting offices on someone&apos;s behalf</li>
         </ul>
-        <p className="text-brand-600 font-medium italic mt-8">"Your Task. Our Ant."</p>
+        <p className="text-brand-600 font-medium italic mt-8">&quot;Your Task. Our Ant.&quot;</p>
       </div>
     </div>
   );

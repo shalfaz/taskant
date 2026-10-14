@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import Button from '../components/ui/Button';
 
 const steps = [
@@ -28,7 +28,7 @@ export default function HowItWorksPage() {
         ))}
       </div>
       <div className="mt-12 text-center">
-        <Link to="/register"><Button size="lg">Get Started Free</Button></Link>
+        <Link href="/register"><Button size="lg">Get Started Free</Button></Link>
       </div>
     </div>
   );

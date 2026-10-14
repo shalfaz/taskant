@@ -1,4 +1,8 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -11,25 +15,25 @@ const navLinks = [
   { to: '/tasks', label: 'Browse Tasks' },
 ];
 
-export default function PublicLayout() {
+export default function PublicLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const location = useLocation();
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/"><Logo size="sm" /></Link>
+            <Link href="/"><Logo size="sm" /></Link>
 
             <nav className="hidden md:flex items-center gap-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.to}
-                  to={link.to}
+                  href={link.to}
                   className={`text-sm font-medium transition-colors ${
-                    location.pathname === link.to ? 'text-brand-600' : 'text-gray-600 hover:text-gray-900'
+                    pathname === link.to ? 'text-brand-600' : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   {link.label}
@@ -39,13 +43,13 @@ export default function PublicLayout() {
 
             <div className="hidden md:flex items-center gap-3">
               {user ? (
-                <Link to={user.role === 'admin' ? '/admin' : '/dashboard'}>
+                <Link href={user.role === 'admin' ? '/admin' : '/dashboard'}>
                   <Button size="sm">Dashboard</Button>
                 </Link>
               ) : (
                 <>
-                  <Link to="/login"><Button variant="ghost" size="sm">Log In</Button></Link>
-                  <Link to="/register"><Button size="sm">Sign Up</Button></Link>
+                  <Link href="/login"><Button variant="ghost" size="sm">Log In</Button></Link>
+                  <Link href="/register"><Button size="sm">Sign Up</Button></Link>
                 </>
               )}
             </div>
@@ -59,17 +63,17 @@ export default function PublicLayout() {
         {mobileOpen && (
           <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3">
             {navLinks.map((link) => (
-              <Link key={link.to} to={link.to} className="block text-sm font-medium text-gray-700 py-2" onClick={() => setMobileOpen(false)}>
+              <Link key={link.to} href={link.to} className="block text-sm font-medium text-gray-700 py-2" onClick={() => setMobileOpen(false)}>
                 {link.label}
               </Link>
             ))}
             <div className="pt-3 border-t flex gap-3">
               {user ? (
-                <Link to="/dashboard" className="flex-1"><Button className="w-full" size="sm">Dashboard</Button></Link>
+                <Link href="/dashboard" className="flex-1"><Button className="w-full" size="sm">Dashboard</Button></Link>
               ) : (
                 <>
-                  <Link to="/login" className="flex-1"><Button variant="outline" className="w-full" size="sm">Log In</Button></Link>
-                  <Link to="/register" className="flex-1"><Button className="w-full" size="sm">Sign Up</Button></Link>
+                  <Link href="/login" className="flex-1"><Button variant="outline" className="w-full" size="sm">Log In</Button></Link>
+                  <Link href="/register" className="flex-1"><Button className="w-full" size="sm">Sign Up</Button></Link>
                 </>
               )}
             </div>
@@ -77,7 +81,7 @@ export default function PublicLayout() {
         )}
       </header>
 
-      <main className="flex-1"><Outlet /></main>
+      <main className="flex-1">{children}</main>
 
       <footer className="bg-gray-900 text-gray-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -85,21 +89,21 @@ export default function PublicLayout() {
             <div className="md:col-span-2">
               <Logo size="sm" className="[&_span]:text-white [&_span_span]:text-brand-400" />
               <p className="mt-3 text-sm text-gray-400 max-w-sm">
-                Your Task. Our Ant. Connect with trusted people who can complete your local tasks when you can't be there.
+                Your Task. Our Ant. Connect with trusted people who can complete your local tasks when you can&apos;t be there.
               </p>
             </div>
             <div>
               <h4 className="font-semibold text-white mb-3">Platform</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/tasks" className="hover:text-white">Browse Tasks</Link></li>
-                <li><Link to="/how-it-works" className="hover:text-white">How It Works</Link></li>
-                <li><Link to="/about" className="hover:text-white">About</Link></li>
+                <li><Link href="/tasks" className="hover:text-white">Browse Tasks</Link></li>
+                <li><Link href="/how-it-works" className="hover:text-white">How It Works</Link></li>
+                <li><Link href="/about" className="hover:text-white">About</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-white mb-3">Support</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/safety" className="hover:text-white">Safety Center</Link></li>
+                <li><Link href="/safety" className="hover:text-white">Safety Center</Link></li>
                 <li><a href="mailto:support@taskant.com" className="hover:text-white">Contact</a></li>
               </ul>
             </div>

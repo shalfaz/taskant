@@ -18,9 +18,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('taskant_token');
       localStorage.removeItem('taskant_user');
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
-      }
+      window.dispatchEvent(new Event('taskant:unauthorized'));
     }
     return Promise.reject(error);
   }

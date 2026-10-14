@@ -1,5 +1,7 @@
-import { Link } from 'react-router-dom';
-import { MapPin, Shield, Star, Users, ArrowRight, CheckCircle } from 'lucide-react';
+'use client';
+
+import Link from 'next/link';
+import { MapPin, Shield, Star, ArrowRight, CheckCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Button from '../components/ui/Button';
 import TaskCard from '../components/TaskCard';
@@ -40,15 +42,15 @@ export default function LandingPage() {
             <div className="animate-fade-in">
               <p className="text-brand-600 font-semibold text-sm mb-4">Your Task. Our Ant.</p>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight">
-                Can't Be There?<br />
+                Can&apos;t Be There?<br />
                 <span className="text-brand-600">Let Someone Nearby Handle It.</span>
               </h1>
               <p className="mt-6 text-lg text-gray-600 max-w-lg">
-                TaskAnt connects you with trusted people who can complete your local tasks when you can't be there yourself.
+                TaskAnt connects you with trusted people who can complete your local tasks when you can&apos;t be there yourself.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
-                <Link to="/register"><Button size="lg">Post a Task <ArrowRight className="w-5 h-5" /></Button></Link>
-                <Link to="/tasks"><Button variant="outline" size="lg">Find a Task</Button></Link>
+                <Link href="/register"><Button size="lg">Post a Task <ArrowRight className="w-5 h-5" /></Button></Link>
+                <Link href="/tasks"><Button variant="outline" size="lg">Find a Task</Button></Link>
               </div>
               <div className="mt-8 flex items-center gap-6 text-sm text-gray-500">
                 <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-green-500" /> Verified Users</span>
@@ -102,7 +104,7 @@ export default function LandingPage() {
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Popular Task Categories</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {categories.map((cat) => (
-              <Link key={cat.name} to="/tasks" className="bg-white rounded-xl p-5 text-center border border-gray-100 hover:border-brand-200 hover:shadow-md transition-all">
+              <Link key={cat.name} href="/tasks" className="bg-white rounded-xl p-5 text-center border border-gray-100 hover:border-brand-200 hover:shadow-md transition-all">
                 <span className="text-3xl">{cat.icon}</span>
                 <p className="mt-3 text-sm font-medium text-gray-700">{cat.name}</p>
               </Link>
@@ -116,7 +118,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-bold text-gray-900">Featured Tasks</h2>
-            <Link to="/tasks" className="text-brand-600 font-medium text-sm hover:underline">View all →</Link>
+            <Link href="/tasks" className="text-brand-600 font-medium text-sm hover:underline">View all →</Link>
           </div>
           {loading ? <LoadingSpinner /> : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -151,8 +153,8 @@ export default function LandingPage() {
           <h2 className="text-3xl font-bold text-white">Ready to Get Started?</h2>
           <p className="mt-4 text-brand-100">Join TaskAnt today and experience hassle-free local task assistance.</p>
           <div className="mt-8 flex justify-center gap-4">
-            <Link to="/register"><Button variant="secondary" size="lg">Create Free Account</Button></Link>
-            <Link to="/how-it-works"><Button variant="outline" size="lg" className="!border-white !text-white hover:!bg-white/10">Learn More</Button></Link>
+            <Link href="/register"><Button variant="secondary" size="lg">Create Free Account</Button></Link>
+            <Link href="/how-it-works"><Button variant="outline" size="lg" className="!border-white !text-white hover:!bg-white/10">Learn More</Button></Link>
           </div>
         </div>
       </section>

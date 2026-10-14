@@ -16,31 +16,55 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('taskant_user');
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('taskant_token'));
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      authApi.me()
-        .then((res) => {
-          setUser(res.data.user);
-          localStorage.setItem('taskant_user', JSON.stringify(res.data.user));
-        })
-        .catch(() => {
-          localStorage.removeItem('taskant_token');
-          localStorage.removeItem('taskant_user');
-          setToken(null);
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    const handleUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+    };
+    window.addEventListener('taskant:unauthorized', handleUnauthorized);
+
+    const restoreSession = async () => {
+      await Promise.resolve();
+      try {
+        const storedToken = localStorage.getItem('taskant_token');
+        const storedUser = localStorage.getItem('taskant_user');
+        setToken(storedToken);
+
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser) as User);
+          } catch (error) {
+            console.error('Unable to read saved TaskAnt user', error);
+            localStorage.removeItem('taskant_user');
+          }
+        }
+
+        if (storedToken) {
+          try {
+            const res = await authApi.me();
+            setUser(res.data.user);
+            localStorage.setItem('taskant_user', JSON.stringify(res.data.user));
+          } catch {
+            localStorage.removeItem('taskant_token');
+            localStorage.removeItem('taskant_user');
+            setToken(null);
+            setUser(null);
+          }
+        }
+      } catch (error) {
+        console.error('Unable to restore the saved TaskAnt session', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void restoreSession();
+    return () => window.removeEventListener('taskant:unauthorized', handleUnauthorized);
+  }, []);
 
   const login = async (email: string, password: string) => {
     const res = await authApi.login({ email, password });

@@ -1,5 +1,8 @@
+'use client';
+
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/ui/Input';
@@ -8,7 +11,7 @@ import Logo from '../components/Logo';
 
 export default function RegisterPage() {
   const { register } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [form, setForm] = useState({
     fullName: '', email: '', phone: '', password: '', confirmPassword: '', location: '',
   });
@@ -40,7 +43,7 @@ export default function RegisterPage() {
         location: form.location,
       });
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      router.push('/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Registration failed';
       toast.error(msg);
@@ -73,7 +76,7 @@ export default function RegisterPage() {
             <Button type="submit" loading={loading} className="w-full">Create Account</Button>
           </form>
           <p className="mt-6 text-center text-sm text-gray-500">
-            Already have an account? <Link to="/login" className="text-brand-600 font-medium hover:underline">Sign in</Link>
+            Already have an account? <Link href="/login" className="text-brand-600 font-medium hover:underline">Sign in</Link>
           </p>
         </div>
       </div>
