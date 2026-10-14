@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { body } from 'express-validator';
 import { memoryDb } from '../db/memoryStore.js';
 import { toPublicUser } from '../utils/auth.js';
@@ -19,7 +20,7 @@ router.post(
     body('comment').trim().notEmpty(),
   ],
   validate,
-  (req: AuthRequest, res) => {
+  (req: AuthRequest, res: Response) => {
     const { taskId, revieweeId, rating, comment } = req.body;
     const task = memoryDb.tasks.findById(taskId);
     if (!task) {

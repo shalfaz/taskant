@@ -1,8 +1,8 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import Logo from './Logo';
-import Button from './ui/Button';
+import Logo from '../components/Logo';
+import Button from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 
 const navLinks = [

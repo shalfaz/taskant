@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { body } from 'express-validator';
 import { memoryDb } from '../db/memoryStore.js';
 import { hashPassword, comparePassword, signToken, toPublicUser } from '../utils/auth.js';
@@ -18,7 +19,7 @@ router.post(
     body('location').trim().notEmpty().withMessage('Location is required'),
   ],
   validate,
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     const { fullName, email, phone, password, location } = req.body;
     const existing = memoryDb.users.findOne({ email: email.toLowerCase() });
     if (existing) {
@@ -52,7 +53,7 @@ router.post(
     body('password').notEmpty(),
   ],
   validate,
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     const { email, password } = req.body;
     const user = memoryDb.users.findOne({ email: email.toLowerCase() });
     if (!user) {

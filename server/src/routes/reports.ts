@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { body } from 'express-validator';
 import { memoryDb } from '../db/memoryStore.js';
 import { authenticate } from '../middleware/auth.js';
@@ -16,7 +17,7 @@ router.post(
     body('description').trim().notEmpty().isLength({ min: 10 }),
   ],
   validate,
-  (req: AuthRequest, res) => {
+  (req: AuthRequest, res: Response) => {
     const report = memoryDb.reports.create({
       reporterId: req.user!.id,
       reportType: req.body.reportType,

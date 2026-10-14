@@ -87,13 +87,13 @@ export const memoryDb = {
     find: (query?: Partial<IUser>) => {
       if (!query) return [...store.users];
       return store.users.filter((u) =>
-        Object.entries(query).every(([k, v]) => (u as Record<string, unknown>)[k] === v)
+        Object.entries(query).every(([k, v]) => u[k as keyof IUser] === v)
       );
     },
     findById: (id: string) => store.users.find((u) => u._id === id) || null,
     findOne: (query: Partial<IUser>) =>
       store.users.find((u) =>
-        Object.entries(query).every(([k, v]) => (u as Record<string, unknown>)[k] === v)
+        Object.entries(query).every(([k, v]) => u[k as keyof IUser] === v)
       ) || null,
     create: (data: Omit<IUser, '_id' | 'createdAt' | 'updatedAt'>) => {
       const user: IUser = {

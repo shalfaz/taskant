@@ -1,3 +1,5 @@
+import type { Request } from 'express';
+
 export type VerificationStatus = 'Unverified' | 'Pending' | 'Verified' | 'Rejected';
 export type TaskStatus = 'Open' | 'Bidding' | 'Assigned' | 'In Progress' | 'Completed' | 'Cancelled';
 export type TaskCategory =
@@ -151,7 +153,7 @@ export interface PublicUser {
   createdAt: Date;
 }
 
-export interface AuthRequest {
+export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: 'user' | 'admin';

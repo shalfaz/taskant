@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { body } from 'express-validator';
 import { memoryDb } from '../db/memoryStore.js';
 import { toPublicUser } from '../utils/auth.js';
@@ -40,7 +41,7 @@ router.put(
     body('skills').optional().isArray(),
   ],
   validate,
-  (req: AuthRequest, res) => {
+  (req: AuthRequest, res: Response) => {
     const { fullName, phone, location, bio, skills, profilePhoto } = req.body;
     const updated = memoryDb.users.update(req.user!.id, {
       ...(fullName && { fullName }),

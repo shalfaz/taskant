@@ -1,0 +1,177 @@
+{
+  "users": [
+    {
+      "fullName": "TaskAnt Admin",
+      "email": "admin@taskant.com",
+      "phone": "+8801700000000",
+      "password": "$2a$12$UHeZlx74N7mTKrBQ4AsByeslpTo6ow/ec.5pAKzgca2eA.eGbAm7y",
+      "location": "Dhaka",
+      "bio": "Platform administrator",
+      "role": "admin",
+      "verificationStatus": "Verified",
+      "rating": 5,
+      "reviewCount": 0,
+      "completedTasks": 0,
+      "postedTasks": 0,
+      "isSuspended": false,
+      "_id": "d01ab273-0dba-460d-a0f9-15ab00f45550",
+      "createdAt": "2026-10-14T08:49:40.952Z",
+      "updatedAt": "2026-10-14T08:49:40.952Z"
+    },
+    {
+      "fullName": "Shohan Hossain",
+      "email": "shohan@taskant.com",
+      "phone": "+8801711111111",
+      "password": "$2a$12$UHeZlx74N7mTKrBQ4AsByeslpTo6ow/ec.5pAKzgca2eA.eGbAm7y",
+      "location": "Dhaka",
+      "bio": "Student at Dhaka University. Often need help with tasks in other districts.",
+      "skills": [
+        "Document Handling",
+        "Communication"
+      ],
+      "role": "user",
+      "verificationStatus": "Verified",
+      "rating": 4.8,
+      "reviewCount": 12,
+      "completedTasks": 8,
+      "postedTasks": 15,
+      "isSuspended": false,
+      "_id": "35553aef-4fd5-43d1-ab37-4f633ccec8cc",
+      "createdAt": "2026-10-14T08:49:40.955Z",
+      "updatedAt": "2026-10-14T08:49:40.955Z"
+    },
+    {
+      "fullName": "Rahim Ahmed",
+      "email": "rahim@taskant.com",
+      "phone": "+8801722222222",
+      "password": "$2a$12$UHeZlx74N7mTKrBQ4AsByeslpTo6ow/ec.5pAKzgca2eA.eGbAm7y",
+      "location": "Pabna",
+      "bio": "Local task helper in Pabna district. Available for document and errand tasks.",
+      "skills": [
+        "Document & Office Work",
+        "Local Errands",
+        "Parcel Collection"
+      ],
+      "role": "user",
+      "verificationStatus": "Verified",
+      "rating": 4.9,
+      "reviewCount": 24,
+      "completedTasks": 32,
+      "postedTasks": 5,
+      "isSuspended": false,
+      "_id": "166cd8f3-73be-44cd-ac7b-d302811d63a9",
+      "createdAt": "2026-10-14T08:49:40.956Z",
+      "updatedAt": "2026-10-14T08:49:40.956Z"
+    },
+    {
+      "fullName": "Karim Uddin",
+      "email": "karim@taskant.com",
+      "phone": "+8801733333333",
+      "password": "$2a$12$UHeZlx74N7mTKrBQ4AsByeslpTo6ow/ec.5pAKzgca2eA.eGbAm7y",
+      "location": "Rajshahi",
+      "bio": "Reliable helper for shopping and local purchases in Rajshahi.",
+      "skills": [
+        "Shopping & Purchase",
+        "Parcel & Delivery"
+      ],
+      "role": "user",
+      "verificationStatus": "Verified",
+      "rating": 4.7,
+      "reviewCount": 18,
+      "completedTasks": 21,
+      "postedTasks": 3,
+      "isSuspended": false,
+      "_id": "3860b308-7727-4660-8b97-f9e9ba18fce0",
+      "createdAt": "2026-10-14T08:49:40.957Z",
+      "updatedAt": "2026-10-14T08:49:40.957Z"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Collect Academic Certificate from Pabna",
+      "description": "I need someone to visit Pabna University and collect my academic certificate from the registrar office. I will provide authorization letter.",
+      "category": "Academic Services",
+      "location": "Pabna",
+      "deadline": "2026-10-28T08:49:40.959Z",
+      "budget": 800,
+      "additionalInstructions": "Office hours: 9 AM - 4 PM. Bring student ID copy.",
+      "status": "Bidding",
+      "posterId": "35553aef-4fd5-43d1-ab37-4f633ccec8cc",
+      "progressNotes": [],
+      "_id": "23ec5cf4-ac75-4e6f-85d6-7f42be71db0e",
+      "createdAt": "2026-10-14T08:49:40.959Z",
+      "updatedAt": "2026-10-14T08:49:40.959Z"
+    },
+    {
+      "title": "Receive Parcel from Pabna Post Office",
+      "description": "A parcel has arrived at Pabna General Post Office. Need someone to collect it with the tracking number I will share.",
+      "category": "Parcel & Delivery",
+      "location": "Pabna",
+      "deadline": "2026-10-21T08:49:40.960Z",
+      "budget": 500,
+      "status": "Open",
+      "posterId": "35553aef-4fd5-43d1-ab37-4f633ccec8cc",
+      "progressNotes": [],
+      "_id": "ef60ea90-c64f-4a0f-b3ea-96a68055afbb",
+      "createdAt": "2026-10-14T08:49:40.960Z",
+      "updatedAt": "2026-10-14T08:49:40.960Z"
+    },
+    {
+      "title": "Purchase Local Product from Rajshahi",
+      "description": "Looking for someone to purchase traditional Rajshahi silk fabric from a specific shop and ship it to Dhaka.",
+      "category": "Shopping & Purchase",
+      "location": "Rajshahi",
+      "deadline": "2026-10-24T08:49:40.961Z",
+      "budget": 1500,
+      "status": "Open",
+      "posterId": "3860b308-7727-4660-8b97-f9e9ba18fce0",
+      "progressNotes": [],
+      "_id": "8c3aebfa-5355-41e3-bd5d-ebde275e3c46",
+      "createdAt": "2026-10-14T08:49:40.961Z",
+      "updatedAt": "2026-10-14T08:49:40.961Z"
+    },
+    {
+      "title": "Submit Documents to Local Office in Dhaka",
+      "description": "Need help submitting visa application documents to the relevant office in Dhaka Motijheel area.",
+      "category": "Document & Office Work",
+      "location": "Dhaka",
+      "deadline": "2026-10-19T08:49:40.962Z",
+      "budget": 600,
+      "status": "Open",
+      "posterId": "166cd8f3-73be-44cd-ac7b-d302811d63a9",
+      "progressNotes": [],
+      "_id": "0318465c-8bd4-466d-93f5-8594648d31ab",
+      "createdAt": "2026-10-14T08:49:40.962Z",
+      "updatedAt": "2026-10-14T08:49:40.962Z"
+    }
+  ],
+  "bids": [
+    {
+      "taskId": "23ec5cf4-ac75-4e6f-85d6-7f42be71db0e",
+      "bidderId": "166cd8f3-73be-44cd-ac7b-d302811d63a9",
+      "amount": 750,
+      "message": "I am located in Pabna and visit the university area regularly. I can collect your certificate within 2 days.",
+      "estimatedCompletion": "2 days",
+      "status": "Pending",
+      "_id": "605359b9-072b-4ddb-8ace-6ab1fc3e1065",
+      "createdAt": "2026-10-14T08:49:40.963Z"
+    }
+  ],
+  "messages": [],
+  "notifications": [
+    {
+      "userId": "35553aef-4fd5-43d1-ab37-4f633ccec8cc",
+      "type": "new_bid",
+      "title": "New Bid Received",
+      "message": "Rahim Ahmed submitted a bid of ৳750 on \"Collect Academic Certificate from Pabna\"",
+      "link": "/tasks/23ec5cf4-ac75-4e6f-85d6-7f42be71db0e",
+      "read": false,
+      "_id": "e588a670-8f98-44ed-b788-2e47b5141f6b",
+      "createdAt": "2026-10-14T08:49:40.964Z"
+    }
+  ],
+  "payments": [],
+  "reviews": [],
+  "verifications": [],
+  "reports": []
+}
