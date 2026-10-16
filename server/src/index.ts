@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { config } from './config/index';
+import { assertProductionConfig, config } from './config/index';
 import { checkMongoConnection, isMongoConfigured } from './db/mongo';
 import { errorHandler } from './middleware/validate';
 import { seedOnStartup } from './seed/startup';
@@ -80,9 +80,14 @@ app.use(errorHandler);
 let initialization: Promise<void> | undefined;
 
 export function initializeApi(): Promise<void> {
-  initialization ??= seedOnStartup().catch((error: unknown) => {
-    initialization = undefined;
-    throw error;
-  });
+  initialization ??= Promise.resolve()
+    .then(() => {
+      assertProductionConfig();
+      return seedOnStartup();
+    })
+    .catch((error: unknown) => {
+      initialization = undefined;
+      throw error;
+    });
   return initialization;
 }

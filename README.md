@@ -33,6 +33,10 @@ The API uses MongoDB through the existing Mongoose models. Copy `.env.example` t
 
 On API initialization, the app connects to MongoDB before serving requests. `/api/health` and `/api/health/mongodb` report whether the application database connection is ready. If MongoDB is unavailable or not configured, API initialization fails with a 503 instead of falling back to volatile storage.
 
+### Deploying to Vercel
+
+Vercel builds the Next.js application without connecting to MongoDB or requiring runtime secrets. Before using the deployed API, add `MONGODB_URI` and a unique `JWT_SECRET` (at least 32 characters) in the Vercel project's Environment Variables for each environment you deploy (Production, Preview, and/or Development). Keep these values server-side; do not use the `NEXT_PUBLIC_` prefix. The API returns 503 until its production JWT secret is configured and MongoDB is reachable. Redeploy after changing Vercel environment variables.
+
 If `server/data/store.json` exists and all nine application collections in MongoDB are empty, the app imports its records once using new MongoDB ObjectIds and remapped references. This import does not overwrite existing Atlas documents or delete/change the JSON file. If Atlas already contains records, the import is skipped. Do not run the seed command against a production database unless you intend this guarded import behavior.
 
 Profile and task image uploads are available through the authenticated `/api/uploads` endpoint. Configure `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, and `CLOUDINARY_CLOUD_NAME` (or the existing public cloud-name variable) to enable them. JPEG, PNG, and WebP images are checked by content signature and limited to 5 MB. This project currently has no verification-document upload field; private verification documents are not uploaded. Report attachments do not yet have a private upload/access flow.

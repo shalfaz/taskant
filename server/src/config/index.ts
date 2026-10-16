@@ -3,11 +3,14 @@ dotenv.config({ path: '../.env' });
 dotenv.config();
 
 const configuredJwtSecret = process.env.JWT_SECRET?.trim();
+const nodeEnv = process.env.NODE_ENV || 'development';
 
 export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
-  jwtSecret: configuredJwtSecret || 'taskant-dev-secret-change-me',
+  nodeEnv,
+  jwtSecret:
+    configuredJwtSecret ||
+    (nodeEnv === 'production' ? '' : 'taskant-dev-secret-change-me'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
   mongoUri: process.env.MONGODB_URI?.trim() || '',
@@ -15,14 +18,18 @@ export const config = {
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
 };
 
-if (
-  config.nodeEnv === 'production' &&
-  (!configuredJwtSecret ||
-    config.jwtSecret === 'taskant-dev-secret-change-me' ||
-    config.jwtSecret.length < 32 ||
-    new Set(config.jwtSecret).size < 12)
-) {
-  throw new Error('JWT_SECRET must be a strong, unique secret of at least 32 characters in production.');
+export function assertProductionConfig(): void {
+  if (
+    config.nodeEnv === 'production' &&
+    (!configuredJwtSecret ||
+      config.jwtSecret === 'taskant-dev-secret-change-me' ||
+      config.jwtSecret.length < 32 ||
+      new Set(config.jwtSecret).size < 12)
+  ) {
+    throw new Error(
+      'JWT_SECRET must be a strong, unique secret of at least 32 characters in production.'
+    );
+  }
 }
 
 export const TASK_CATEGORIES = [

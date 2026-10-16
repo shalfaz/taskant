@@ -20,7 +20,7 @@ async function forwardToExpress(request: NextRequest): Promise<Response> {
     await initializeApi();
   } catch {
     return Response.json(
-      { message: "TaskAnt API initialization failed because the database is unavailable." },
+      { message: "TaskAnt API configuration is incomplete or its database is unavailable." },
       { status: 503 },
     );
   }
