@@ -27,6 +27,16 @@ npm run dev
 
 The Next.js App Router serves the home, About, How It Works, login, registration, dashboard, and admin routes. Existing React components, styles, authentication, and API services in `client/src` are reused by those routes. All existing API endpoints are available under `/api/*` through a Next.js Route Handler that forwards requests to the existing Express routers, preserving their validation, authentication, and response behavior without starting a separate server.
 
+## MongoDB Atlas
+
+The API uses MongoDB through the existing Mongoose models. Copy `.env.example` to `.env`, set `MONGODB_URI` to the Atlas Node.js connection string, and set `JWT_SECRET` to a unique random value of at least 32 characters before production deployment. Keep `.env` private; it is ignored by Git.
+
+On API initialization, the app connects to MongoDB before serving requests. `/api/health` and `/api/health/mongodb` report whether the application database connection is ready. If MongoDB is unavailable or not configured, API initialization fails with a 503 instead of falling back to volatile storage.
+
+If `server/data/store.json` exists and all nine application collections in MongoDB are empty, the app imports its records once using new MongoDB ObjectIds and remapped references. This import does not overwrite existing Atlas documents or delete/change the JSON file. If Atlas already contains records, the import is skipped. Do not run the seed command against a production database unless you intend this guarded import behavior.
+
+Profile and task image uploads are available through the authenticated `/api/uploads` endpoint. Configure `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, and `CLOUDINARY_CLOUD_NAME` (or the existing public cloud-name variable) to enable them. JPEG, PNG, and WebP images are checked by content signature and limited to 5 MB. This project currently has no verification-document upload field; private verification documents are not uploaded. Report attachments do not yet have a private upload/access flow.
+
 The browser calls the same-origin API at `/api`. To use a different API URL, create a root `.env.local` file and set:
 
 ```env
@@ -40,10 +50,6 @@ The backend-only settings, including `JWT_SECRET` and `CLIENT_URL`, remain serve
 The existing frontend includes the landing page with featured tasks, About, How It Works, login, registration, and dashboard screens, plus shared UI components, API services, types, and styles. The backend already provides task, bid, messaging, notification, payment, review, verification, reporting, and admin endpoints.
 
 Several frontend screens linked from the navigation are not implemented yet, including task browsing/details and most task-management and admin pages. Those URLs show an explicit “not available yet” message instead of pretending the feature works. The admin demo login can open the admin area, but the admin management UI remains incomplete.
-
-The API still uses the existing JSON-based store at `server/data/store.json` and seeds demo data only when the store has no users. Do not delete or replace that file if you want to keep the current local demo records. The existing demo login forms show the seed accounts.
-
-The JSON store is suitable for local development and demos, but it is not reliable production storage on Vercel: function instances are temporary and may run concurrently, and deployment files are not a durable writable database. Vercel deployments need a shared persistent database (or another durable store) before production writes can be relied upon. The existing file is included in the API route's output trace for reading; this does not make writes persistent.
 
 Socket.IO source and dependencies are retained, but Vercel Route Handlers do not host the existing long-lived Socket.IO server. There are no current frontend call sites for the socket client; real-time messaging/notifications would need a compatible external real-time service or a host that supports persistent WebSocket servers.
 

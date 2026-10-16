@@ -11,6 +11,13 @@ export const validate: RequestHandler = (req, res, next) => {
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ message: err.message || 'Internal server error' });
+  void err;
+  void _next;
+  res.status(500).json({ message: 'Internal server error' });
 };
+
+export function asyncHandler(handler: RequestHandler): RequestHandler {
+  return (req, res, next) => {
+    Promise.resolve(handler(req, res, next)).catch(next);
+  };
+}

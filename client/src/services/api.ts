@@ -105,3 +105,19 @@ export const adminApi = {
   updateReport: (id: string, data: Record<string, string>) =>
     api.patch(`/admin/reports/${id}`, data),
 };
+
+export const uploadsApi = {
+  upload: async (file: File, purpose: 'profile-photo' | 'task-attachment') => {
+    const data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () =>
+        typeof reader.result === 'string'
+          ? resolve(reader.result)
+          : reject(new Error('Unable to read the selected file.'));
+      reader.onerror = () => reject(new Error('Unable to read the selected file.'));
+      reader.readAsDataURL(file);
+    });
+
+    return api.post('/uploads', { purpose, mimeType: file.type, data });
+  },
+};

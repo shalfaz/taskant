@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import type { Response } from 'express';
 import { body } from 'express-validator';
-import { memoryDb } from '../db/memoryStore';
+import { findRecords, insertRecord } from '../db/records';
+import { Report } from '../models/index';
+import type { IReport } from '../types/index';
 import { authenticate } from '../middleware/auth';
-import { validate } from '../middleware/validate';
+import { validate, asyncHandler } from '../middleware/validate';
 import { REPORT_TYPES } from '../config/index';
 import type { AuthRequest } from '../types/index';
 
@@ -17,8 +19,8 @@ router.post(
     body('description').trim().notEmpty().isLength({ min: 10 }),
   ],
   validate,
-  (req: AuthRequest, res: Response) => {
-    const report = memoryDb.reports.create({
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const report = await insertRecord<IReport>(Report, {
       reporterId: req.user!.id,
       reportType: req.body.reportType,
       description: req.body.description,
@@ -28,14 +30,16 @@ router.post(
       status: 'Pending',
     });
     res.status(201).json({ report });
-  }
+  })
 );
 
-router.get('/my', authenticate, (req: AuthRequest, res) => {
-  const reports = memoryDb.reports
-    .find((r) => r.reporterId === req.user!.id)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+router.get('/my', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+  const reports = await findRecords<IReport>(
+    Report,
+    { reporterId: req.user!.id },
+    { createdAt: -1 }
+  );
   res.json({ reports });
-});
+}));
 
 export default router;

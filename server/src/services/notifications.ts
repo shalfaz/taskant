@@ -1,4 +1,6 @@
-import { memoryDb } from '../db/memoryStore';
+import { Notification } from '../models/index';
+import { insertRecord } from '../db/records';
+import type { INotification } from '../types/index';
 import type { Server as SocketServer } from 'socket.io';
 
 let io: SocketServer | null = null;
@@ -13,16 +15,17 @@ export function createNotification(data: {
   title: string;
   message: string;
   link?: string;
-}): void {
-  const notification = memoryDb.notifications.create({
+}): Promise<void> {
+  return insertRecord<INotification>(Notification, {
     userId: data.userId,
     type: data.type,
     title: data.title,
     message: data.message,
     link: data.link,
     read: false,
+  }).then((notification) => {
+    io?.to(`user:${data.userId}`).emit('notification', notification);
   });
-  io?.to(`user:${data.userId}`).emit('notification', notification);
 }
 
 export function emitToUser(userId: string, event: string, data: unknown): void {

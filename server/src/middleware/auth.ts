@@ -1,28 +1,31 @@
 import type { Response, NextFunction } from 'express';
-import type { AuthRequest } from '../types/index';
+import type { AuthRequest, IUser } from '../types/index';
+import { findRecord } from '../db/records';
+import { User } from '../models/index';
 import { verifyToken } from '../utils/auth';
-import { memoryDb } from '../db/memoryStore';
+import { asyncHandler } from './validate';
 
-export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    res.status(401).json({ message: 'Authentication required' });
-    return;
+export const authenticate = asyncHandler(
+  async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ')) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+    const decoded = verifyToken(header.split(' ')[1]);
+    if (!decoded) {
+      res.status(401).json({ message: 'Invalid or expired token' });
+      return;
+    }
+    const user = await findRecord<IUser>(User, decoded.id);
+    if (!user || user.isSuspended) {
+      res.status(401).json({ message: 'Account not found or suspended' });
+      return;
+    }
+    req.user = decoded;
+    _next();
   }
-  const token = header.split(' ')[1];
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    res.status(401).json({ message: 'Invalid or expired token' });
-    return;
-  }
-  const user = memoryDb.users.findById(decoded.id);
-  if (!user || user.isSuspended) {
-    res.status(401).json({ message: 'Account not found or suspended' });
-    return;
-  }
-  req.user = decoded;
-  next();
-}
+);
 
 export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
   if (req.user?.role !== 'admin') {
@@ -32,11 +35,16 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
   next();
 }
 
-export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction): void {
-  const header = req.headers.authorization;
-  if (header?.startsWith('Bearer ')) {
-    const decoded = verifyToken(header.split(' ')[1]);
-    if (decoded) req.user = decoded;
+export const optionalAuth = asyncHandler(
+  async (req: AuthRequest, _res: Response, next: NextFunction) => {
+    const header = req.headers.authorization;
+    if (header?.startsWith('Bearer ')) {
+      const decoded = verifyToken(header.split(' ')[1]);
+      if (decoded) {
+        const user = await findRecord<IUser>(User, decoded.id);
+        if (user && !user.isSuspended) req.user = decoded;
+      }
+    }
+    next();
   }
-  next();
-}
+);

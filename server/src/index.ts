@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { config } from './config/index';
+import { checkMongoConnection, isMongoConfigured } from './db/mongo';
 import { errorHandler } from './middleware/validate';
 import { seedOnStartup } from './seed/startup';
 
@@ -17,6 +18,7 @@ import verificationRoutes from './routes/verification';
 import reportRoutes from './routes/reports';
 import adminRoutes from './routes/admin';
 import dashboardRoutes from './routes/dashboard';
+import uploadRoutes from './routes/uploads';
 
 export const app = express();
 app.set('trust proxy', 1);
@@ -31,8 +33,32 @@ app.use(
   })
 );
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', name: 'TaskAnt API', version: '1.0.0' });
+app.get('/api/health', async (_req, res) => {
+  try {
+    await checkMongoConnection();
+    return res.json({ status: 'ok', name: 'TaskAnt API', version: '1.0.0' });
+  } catch {
+    return res.status(503).json({ status: 'error', message: 'Application database is not ready.' });
+  }
+});
+
+app.get('/api/health/mongodb', async (_req, res) => {
+  if (!isMongoConfigured()) {
+    return res.status(503).json({
+      status: 'error',
+      message: 'MongoDB is not configured.',
+    });
+  }
+
+  try {
+    await checkMongoConnection();
+    return res.json({ status: 'ok', database: 'MongoDB' });
+  } catch {
+    return res.status(503).json({
+      status: 'error',
+      message: 'Application database is not ready.',
+    });
+  }
 });
 
 app.use('/api/auth', authRoutes);
@@ -47,12 +73,16 @@ app.use('/api/verification', verificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 app.use(errorHandler);
 
 let initialization: Promise<void> | undefined;
 
 export function initializeApi(): Promise<void> {
-  initialization ??= seedOnStartup();
+  initialization ??= seedOnStartup().catch((error: unknown) => {
+    initialization = undefined;
+    throw error;
+  });
   return initialization;
 }
