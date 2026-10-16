@@ -1,42 +1,52 @@
 import { Router } from 'express';
-import { memoryDb } from '../db/memoryStore';
+import { findRecords } from '../db/records';
+import { Bid, Notification, Payment, Task } from '../models/index';
+import type { IBid, IPayment, ITask, INotification } from '../types/index';
 import { authenticate } from '../middleware/auth';
+import { asyncHandler } from '../middleware/validate';
 import type { AuthRequest } from '../types/index';
 
 const router = Router();
 
-router.get('/', authenticate, (req: AuthRequest, res) => {
+router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const postedTasks = memoryDb.tasks.find((t) => t.posterId === userId);
-  const acceptedTasks = memoryDb.tasks.find((t) => t.workerId === userId);
-  const pendingBids = memoryDb.bids.find((b) => b.bidderId === userId && b.status === 'Pending');
-  const notifications = memoryDb.notifications.find((n) => n.userId === userId && !n.read);
-  const payments = memoryDb.payments.find((p) => p.payerId === userId || p.payeeId === userId);
-  const earnings = payments.filter((p) => p.payeeId === userId && p.status === 'Completed').reduce((s, p) => s + p.amount, 0);
-  const spending = payments.filter((p) => p.payerId === userId && p.status === 'Completed').reduce((s, p) => s + p.total, 0);
-  const availableTasks = memoryDb.tasks.find((t) => ['Open', 'Bidding'].includes(t.status) && t.posterId !== userId);
-
+  const [postedTasks, acceptedTasks, pendingBids, notifications, payments, availableTasks] =
+    await Promise.all([
+      findRecords<ITask>(Task, { posterId: userId }, { createdAt: -1 }),
+      findRecords<ITask>(Task, { workerId: userId }, { createdAt: -1 }),
+      findRecords<IBid>(Bid, { bidderId: userId, status: 'Pending' }, { createdAt: -1 }),
+      findRecords<INotification>(Notification, { userId, read: false }),
+      findRecords<IPayment>(Payment, { $or: [{ payerId: userId }, { payeeId: userId }] }),
+      findRecords<ITask>(Task, { status: { $in: ['Open', 'Bidding'] }, posterId: { $ne: userId } }),
+    ]);
+  const earnings = payments
+    .filter((payment) => payment.payeeId === userId && payment.status === 'Completed')
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const spending = payments
+    .filter((payment) => payment.payerId === userId && payment.status === 'Completed')
+    .reduce((sum, payment) => sum + payment.total, 0);
+  const active = (task: ITask) => ['Assigned', 'In Progress'].includes(task.status);
   res.json({
     stats: {
       postedCount: postedTasks.length,
       acceptedCount: acceptedTasks.length,
-      activePosted: postedTasks.filter((t) => ['Assigned', 'In Progress'].includes(t.status)).length,
-      activeAccepted: acceptedTasks.filter((t) => ['Assigned', 'In Progress'].includes(t.status)).length,
-      completedPosted: postedTasks.filter((t) => t.status === 'Completed').length,
-      completedAccepted: acceptedTasks.filter((t) => t.status === 'Completed').length,
+      activePosted: postedTasks.filter(active).length,
+      activeAccepted: acceptedTasks.filter(active).length,
+      completedPosted: postedTasks.filter((task) => task.status === 'Completed').length,
+      completedAccepted: acceptedTasks.filter((task) => task.status === 'Completed').length,
       pendingBids: pendingBids.length,
       unreadNotifications: notifications.length,
       earnings,
       spending,
     },
-    recentPosted: postedTasks.slice(-3).reverse(),
-    recentAccepted: acceptedTasks.slice(-3).reverse(),
+    recentPosted: postedTasks.slice(0, 3),
+    recentAccepted: acceptedTasks.slice(0, 3),
     availableTasks: availableTasks.slice(0, 4),
-    pendingBids: pendingBids.slice(0, 5).map((b) => ({
-      ...b,
-      task: memoryDb.tasks.findById(b.taskId),
-    })),
+    pendingBids: await Promise.all(pendingBids.slice(0, 5).map(async (bid) => ({
+      ...bid,
+      task: (await Task.findById(bid.taskId).lean().exec()),
+    }))),
   });
-});
+}));
 
 export default router;

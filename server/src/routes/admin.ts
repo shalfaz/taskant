@@ -1,76 +1,89 @@
 import { Router } from 'express';
 import type { Response } from 'express';
 import { body } from 'express-validator';
-import { memoryDb } from '../db/memoryStore';
+import { findRecord, findRecords, updateRecord } from '../db/records';
+import { Payment, Report, Task, User, Verification } from '../models/index';
+import type { IReport, ITask, IUser, IVerification } from '../types/index';
 import { toPublicUser } from '../utils/auth';
 import { authenticate, requireAdmin } from '../middleware/auth';
-import { validate } from '../middleware/validate';
+import { validate, asyncHandler } from '../middleware/validate';
 import { createNotification } from '../services/notifications';
 import type { AuthRequest } from '../types/index';
 
 const router = Router();
 router.use(authenticate, requireAdmin);
 
-router.get('/stats', (_req, res) => {
-  const users = memoryDb.users.find();
-  const tasks = memoryDb.tasks.find();
-  const payments = memoryDb.payments.find();
-  const reports = memoryDb.reports.find();
-  const verifications = memoryDb.verifications.find();
-
+router.get('/stats', asyncHandler(async (_req, res) => {
+  const [users, tasks, payments, pendingReports, pendingVerifications, recentTasks, recentUsers] =
+    await Promise.all([
+      User.find({ role: 'user' }).lean().exec(),
+      Task.find({}).lean().exec(),
+      Payment.find({ status: 'Completed' }).lean().exec(),
+      Report.countDocuments({ status: 'Pending' }),
+      Verification.countDocuments({ status: 'Pending' }),
+      findRecords<ITask>(Task, {}, { createdAt: -1 }),
+      findRecords<IUser>(User, { role: 'user' }, { createdAt: -1 }),
+    ]);
+  const tasksAsRecords = tasks.map((task) => task as unknown as ITask);
   res.json({
     stats: {
-      totalUsers: users.filter((u) => u.role === 'user').length,
-      verifiedUsers: users.filter((u) => u.verificationStatus === 'Verified').length,
+      totalUsers: users.length,
+      verifiedUsers: users.filter((user) => user.verificationStatus === 'Verified').length,
       totalTasks: tasks.length,
-      activeTasks: tasks.filter((t) => ['Open', 'Bidding', 'Assigned', 'In Progress'].includes(t.status)).length,
-      completedTasks: tasks.filter((t) => t.status === 'Completed').length,
-      totalTransactions: payments.filter((p) => p.status === 'Completed').length,
-      totalRevenue: payments.filter((p) => p.status === 'Completed').reduce((s, p) => s + p.serviceFee, 0),
-      pendingReports: reports.filter((r) => r.status === 'Pending').length,
-      pendingVerifications: verifications.filter((v) => v.status === 'Pending').length,
+      activeTasks: tasksAsRecords.filter((task) => ['Open', 'Bidding', 'Assigned', 'In Progress'].includes(task.status)).length,
+      completedTasks: tasksAsRecords.filter((task) => task.status === 'Completed').length,
+      totalTransactions: payments.length,
+      totalRevenue: payments.reduce((sum, payment) => sum + Number(payment.serviceFee), 0),
+      pendingReports,
+      pendingVerifications,
     },
-    recentTasks: tasks.slice(-5).reverse(),
-    recentUsers: users.filter((u) => u.role === 'user').slice(-5).reverse().map((u) => toPublicUser(u)),
+    recentTasks: recentTasks.slice(0, 5),
+    recentUsers: recentUsers.slice(0, 5).map((user) => toPublicUser(user)),
   });
-});
+}));
 
-router.get('/users', (_req, res) => {
-  const users = memoryDb.users.find().map((u) => toPublicUser(u, true));
-  res.json({ users });
-});
+router.get('/users', asyncHandler(async (_req, res) => {
+  const users = await findRecords<IUser>(User);
+  res.json({ users: users.map((user) => toPublicUser(user, true)) });
+}));
 
-router.patch('/users/:id/suspend', (req, res) => {
-  const user = memoryDb.users.update(req.params.id, { isSuspended: req.body.suspended ?? true });
+router.patch('/users/:id/suspend', asyncHandler(async (req, res) => {
+  const user = await updateRecord<IUser>(User, req.params.id, {
+    isSuspended: req.body.suspended ?? true,
+  });
   if (!user) {
     res.status(404).json({ message: 'User not found' });
     return;
   }
   res.json({ user: toPublicUser(user, true) });
-});
+}));
 
-router.get('/tasks', (_req, res) => {
-  const tasks = memoryDb.tasks.find().map((t) => {
-    const poster = memoryDb.users.findById(t.posterId);
-    return { ...t, poster: poster ? toPublicUser(poster) : null };
+router.get('/tasks', asyncHandler(async (_req, res) => {
+  const tasks = await findRecords<ITask>(Task);
+  res.json({
+    tasks: await Promise.all(tasks.map(async (task) => {
+      const poster = await findRecord<IUser>(User, task.posterId);
+      return { ...task, poster: poster ? toPublicUser(poster) : null };
+    })),
   });
-  res.json({ tasks });
-});
+}));
 
-router.get('/verifications', (_req, res) => {
-  const items = memoryDb.verifications.find().map((v) => {
-    const user = memoryDb.users.findById(v.userId);
-    return { ...v, user: user ? toPublicUser(user, true) : null };
+router.get('/verifications', asyncHandler(async (_req, res) => {
+  const items = await findRecords<IVerification>(Verification);
+  res.json({
+    verifications: await Promise.all(items.map(async (verification) => {
+      const user = await findRecord<IUser>(User, verification.userId);
+      return { ...verification, user: user ? toPublicUser(user, true) : null };
+    })),
   });
-  res.json({ verifications: items });
-});
+}));
 
 router.patch(
   '/verifications/:id',
   [body('status').isIn(['Verified', 'Rejected'])],
   validate,
-  (req: AuthRequest, res: Response) => {
-    const verification = memoryDb.verifications.update(req.params.id, {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const verification = await updateRecord<IVerification>(Verification, req.params.id, {
       status: req.body.status,
       adminNotes: req.body.adminNotes,
     });
@@ -78,10 +91,8 @@ router.patch(
       res.status(404).json({ message: 'Verification not found' });
       return;
     }
-    memoryDb.users.update(verification.userId, {
-      verificationStatus: req.body.status,
-    });
-    createNotification({
+    await updateRecord<IUser>(User, verification.userId, { verificationStatus: req.body.status });
+    await createNotification({
       userId: verification.userId,
       type: 'verification_update',
       title: 'Verification Update',
@@ -89,19 +100,21 @@ router.patch(
       link: '/profile',
     });
     res.json({ verification });
-  }
+  })
 );
 
-router.get('/reports', (_req, res) => {
-  const items = memoryDb.reports.find().map((r) => {
-    const reporter = memoryDb.users.findById(r.reporterId);
-    return { ...r, reporter: reporter ? toPublicUser(reporter) : null };
+router.get('/reports', asyncHandler(async (_req, res) => {
+  const items = await findRecords<IReport>(Report);
+  res.json({
+    reports: await Promise.all(items.map(async (report) => {
+      const reporter = await findRecord<IUser>(User, report.reporterId);
+      return { ...report, reporter: reporter ? toPublicUser(reporter) : null };
+    })),
   });
-  res.json({ reports: items });
-});
+}));
 
-router.patch('/reports/:id', (req, res) => {
-  const report = memoryDb.reports.update(req.params.id, {
+router.patch('/reports/:id', asyncHandler(async (req, res) => {
+  const report = await updateRecord<IReport>(Report, req.params.id, {
     status: req.body.status,
     adminNotes: req.body.adminNotes,
   });
@@ -109,7 +122,7 @@ router.patch('/reports/:id', (req, res) => {
     res.status(404).json({ message: 'Report not found' });
     return;
   }
-  createNotification({
+  await createNotification({
     userId: report.reporterId,
     type: 'report_update',
     title: 'Report Update',
@@ -117,6 +130,6 @@ router.patch('/reports/:id', (req, res) => {
     link: '/safety',
   });
   res.json({ report });
-});
+}));
 
 export default router;

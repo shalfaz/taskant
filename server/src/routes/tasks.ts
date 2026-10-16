@@ -1,19 +1,23 @@
 import { Router } from 'express';
 import type { Response } from 'express';
-import { body, query } from 'express-validator';
-import { memoryDb } from '../db/memoryStore';
+import { body } from 'express-validator';
+import { findRecord, findRecords, insertRecord, updateRecord } from '../db/records';
+import { Bid, Task, User } from '../models/index';
+import type { ITask, IUser } from '../types/index';
 import { toPublicUser } from '../utils/auth';
 import { authenticate, optionalAuth } from '../middleware/auth';
-import { validate } from '../middleware/validate';
+import { validate, asyncHandler } from '../middleware/validate';
 import { TASK_CATEGORIES } from '../config/index';
-import type { AuthRequest, ITask } from '../types/index';
+import type { AuthRequest } from '../types/index';
 
 const router = Router();
 
-function enrichTask(task: ITask) {
-  const poster = memoryDb.users.findById(task.posterId);
-  const worker = task.workerId ? memoryDb.users.findById(task.workerId) : null;
-  const bidCount = memoryDb.bids.find((b) => b.taskId === task._id && b.status === 'Pending').length;
+async function enrichTask(task: ITask) {
+  const [poster, worker, bidCount] = await Promise.all([
+    findRecord<IUser>(User, task.posterId),
+    task.workerId ? findRecord<IUser>(User, task.workerId) : Promise.resolve(null),
+    Bid.countDocuments({ taskId: task._id, status: 'Pending' }),
+  ]);
   return {
     ...task,
     poster: poster ? toPublicUser(poster) : null,
@@ -22,84 +26,53 @@ function enrichTask(task: ITask) {
   };
 }
 
-router.get('/', optionalAuth, (req, res) => {
-  const {
-    search,
-    category,
-    location,
-    minBudget,
-    maxBudget,
-    status,
-    sort = 'newest',
-    mine,
-    accepted,
-    posted,
-  } = req.query;
-
-  let tasks = memoryDb.tasks.find();
-
-  if (mine === 'posted' && (req as AuthRequest).user) {
-    tasks = tasks.filter((t) => t.posterId === (req as AuthRequest).user!.id);
-  } else if (mine === 'accepted' && (req as AuthRequest).user) {
-    tasks = tasks.filter((t) => t.workerId === (req as AuthRequest).user!.id);
-  } else if (posted !== 'true') {
-    tasks = tasks.filter((t) => !['Cancelled'].includes(t.status));
-  }
-
+router.get('/', optionalAuth, asyncHandler(async (req, res) => {
+  const { search, category, location, minBudget, maxBudget, status, sort = 'newest', mine, accepted, posted } = req.query;
+  const query: Record<string, unknown> = {};
+  const authUser = (req as AuthRequest).user;
+  if (mine === 'posted' && authUser) query.posterId = authUser.id;
+  else if (mine === 'accepted' && authUser) query.workerId = authUser.id;
+  else if (posted !== 'true') query.status = { $ne: 'Cancelled' };
   if (search) {
-    const s = String(search).toLowerCase();
-    tasks = tasks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(s) ||
-        t.description.toLowerCase().includes(s) ||
-        t.location.toLowerCase().includes(s)
-    );
+    const escaped = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = { $regex: escaped, $options: 'i' };
+    query.$or = [{ title: match }, { description: match }, { location: match }];
   }
-  if (category) tasks = tasks.filter((t) => t.category === category);
+  if (category) query.category = category;
   if (location) {
-    const loc = String(location).toLowerCase();
-    tasks = tasks.filter((t) => t.location.toLowerCase().includes(loc));
+    const escaped = String(location).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    query.location = { $regex: escaped, $options: 'i' };
   }
-  if (minBudget) tasks = tasks.filter((t) => t.budget >= Number(minBudget));
-  if (maxBudget) tasks = tasks.filter((t) => t.budget <= Number(maxBudget));
-  if (status) tasks = tasks.filter((t) => t.status === status);
-  if (accepted === 'true' && (req as AuthRequest).user) {
-    tasks = tasks.filter((t) => t.workerId === (req as AuthRequest).user!.id);
+  if (minBudget || maxBudget) {
+    query.budget = {
+      ...(minBudget && { $gte: Number(minBudget) }),
+      ...(maxBudget && { $lte: Number(maxBudget) }),
+    };
   }
+  if (status) query.status = status;
+  if (accepted === 'true' && authUser) query.workerId = authUser.id;
 
-  tasks.sort((a, b) => {
-    switch (sort) {
-      case 'budget-high':
-        return b.budget - a.budget;
-      case 'budget-low':
-        return a.budget - b.budget;
-      case 'deadline':
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-      default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-  });
+  const sortBy: Record<string, 1 | -1> =
+    sort === 'budget-high' ? { budget: -1 } :
+      sort === 'budget-low' ? { budget: 1 } :
+        sort === 'deadline' ? { deadline: 1 } : { createdAt: -1 };
+  const tasks = await findRecords<ITask>(Task, query, sortBy);
+  res.json({ tasks: await Promise.all(tasks.map(enrichTask)), categories: TASK_CATEGORIES });
+}));
 
-  res.json({ tasks: tasks.map(enrichTask), categories: TASK_CATEGORIES });
-});
+router.get('/featured', asyncHandler(async (_req, res) => {
+  const tasks = await findRecords<ITask>(Task, { status: { $in: ['Open', 'Bidding'] } }, { budget: -1 });
+  res.json({ tasks: await Promise.all(tasks.slice(0, 6).map(enrichTask)) });
+}));
 
-router.get('/featured', (_req, res) => {
-  const tasks = memoryDb.tasks
-    .find((t) => ['Open', 'Bidding'].includes(t.status))
-    .sort((a, b) => b.budget - a.budget)
-    .slice(0, 6)
-    .map(enrichTask);
-  res.json({ tasks });
-});
-
-router.get('/:id', optionalAuth, (req, res) => {
-  const task = memoryDb.tasks.findById(req.params.id);
+router.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
+  const task = await findRecord<ITask>(Task, req.params.id);
   if (!task) {
     res.status(404).json({ message: 'Task not found' });
     return;
   }
-  res.json({ task: enrichTask(task) });
-});
+  res.json({ task: await enrichTask(task) });
+}));
 
 router.post(
   '/',
@@ -113,8 +86,8 @@ router.post(
     body('budget').isFloat({ min: 1 }),
   ],
   validate,
-  (req: AuthRequest, res: Response) => {
-    const task = memoryDb.tasks.create({
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const task = await insertRecord<ITask>(Task, {
       title: req.body.title,
       description: req.body.description,
       category: req.body.category,
@@ -127,16 +100,13 @@ router.post(
       posterId: req.user!.id,
       progressNotes: [],
     });
-    const poster = memoryDb.users.findById(req.user!.id);
-    if (poster) {
-      memoryDb.users.update(poster._id, { postedTasks: poster.postedTasks + 1 });
-    }
-    res.status(201).json({ task: enrichTask(task) });
-  }
+    await User.findByIdAndUpdate(req.user!.id, { $inc: { postedTasks: 1 } }).exec();
+    res.status(201).json({ task: await enrichTask(task) });
+  })
 );
 
-router.patch('/:id/status', authenticate, (req: AuthRequest, res) => {
-  const task = memoryDb.tasks.findById(req.params.id);
+router.patch('/:id/status', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+  const task = await findRecord<ITask>(Task, req.params.id);
   if (!task) {
     res.status(404).json({ message: 'Task not found' });
     return;
@@ -145,47 +115,35 @@ router.patch('/:id/status', authenticate, (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const isPoster = task.posterId === userId;
   const isWorker = task.workerId === userId;
-
+  let updated: ITask | null = null;
   if (status === 'In Progress' && isWorker && task.status === 'Assigned') {
-    const updated = memoryDb.tasks.update(task._id, {
-      status: 'In Progress',
-      progressNotes: [
-        ...(task.progressNotes || []),
-        { note: note || 'Task started', status: 'In Progress', createdAt: new Date() },
-      ],
+    updated = await updateRecord<ITask>(Task, task._id, {
+      status,
+      progressNotes: [...(task.progressNotes || []), { note: note || 'Task started', status, createdAt: new Date() }],
     });
-    res.json({ task: enrichTask(updated!) });
-    return;
-  }
-
-  if (status === 'Completed' && isWorker && task.status === 'In Progress') {
-    const updated = memoryDb.tasks.update(task._id, {
-      status: 'Completed',
-      progressNotes: [
-        ...(task.progressNotes || []),
-        { note: note || 'Task marked as completed by worker', status: 'Completed', createdAt: new Date() },
-      ],
+  } else if (status === 'Completed' && isWorker && task.status === 'In Progress') {
+    updated = await updateRecord<ITask>(Task, task._id, {
+      status,
+      progressNotes: [...(task.progressNotes || []), { note: note || 'Task marked as completed by worker', status, createdAt: new Date() }],
     });
-    res.json({ task: enrichTask(updated!) });
+  } else if (status === 'Completed' && isPoster && task.status === 'Completed') {
+    res.json({ task: await enrichTask(task), message: 'Awaiting payment and review' });
+    return;
+  } else if (status === 'Cancelled' && isPoster && ['Open', 'Bidding'].includes(task.status)) {
+    updated = await updateRecord<ITask>(Task, task._id, { status });
+  } else {
+    res.status(400).json({ message: 'Invalid status transition' });
     return;
   }
-
-  if (status === 'Completed' && isPoster && task.status === 'Completed') {
-    res.json({ task: enrichTask(task), message: 'Awaiting payment and review' });
+  if (updated) {
+    res.json({ task: await enrichTask(updated) });
     return;
   }
+  res.status(404).json({ message: 'Task not found' });
+}));
 
-  if (status === 'Cancelled' && isPoster && ['Open', 'Bidding'].includes(task.status)) {
-    const updated = memoryDb.tasks.update(task._id, { status: 'Cancelled' });
-    res.json({ task: enrichTask(updated!) });
-    return;
-  }
-
-  res.status(400).json({ message: 'Invalid status transition' });
-});
-
-router.post('/:id/confirm-completion', authenticate, (req: AuthRequest, res) => {
-  const task = memoryDb.tasks.findById(req.params.id);
+router.post('/:id/confirm-completion', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+  const task = await findRecord<ITask>(Task, req.params.id);
   if (!task) {
     res.status(404).json({ message: 'Task not found' });
     return;
@@ -198,11 +156,8 @@ router.post('/:id/confirm-completion', authenticate, (req: AuthRequest, res) => 
     res.status(400).json({ message: 'Task must be marked completed by worker first' });
     return;
   }
-  const worker = memoryDb.users.findById(task.workerId!);
-  if (worker) {
-    memoryDb.users.update(worker._id, { completedTasks: worker.completedTasks + 1 });
-  }
-  res.json({ task: enrichTask(task), message: 'Completion confirmed. Proceed to payment.' });
-});
+  if (task.workerId) await User.findByIdAndUpdate(task.workerId, { $inc: { completedTasks: 1 } }).exec();
+  res.json({ task: await enrichTask(task), message: 'Completion confirmed. Proceed to payment.' });
+}));
 
 export default router;

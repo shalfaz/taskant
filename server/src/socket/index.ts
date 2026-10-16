@@ -2,7 +2,10 @@ import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { verifyToken } from '../utils/auth';
 import { config } from '../config/index';
-import { memoryDb } from '../db/memoryStore';
+import { findRecord, insertRecord } from '../db/records';
+import { Message } from '../models/index';
+import type { IMessage, ITask, IUser } from '../types/index';
+import { Task, User } from '../models/index';
 import { createNotification } from '../services/notifications';
 
 const onlineUsers = new Map<string, string>();
@@ -28,36 +31,41 @@ export function setupSocket(httpServer: HttpServer): Server {
     io.emit('user_online', { userId });
 
     socket.on('join_task', (taskId: string) => {
-      const task = memoryDb.tasks.findById(taskId);
-      if (task && (task.posterId === userId || task.workerId === userId)) {
-        socket.join(`task:${taskId}`);
-      }
+      void findRecord<ITask>(Task, taskId).then((task) => {
+        if (task && (task.posterId === userId || task.workerId === userId)) {
+          socket.join(`task:${taskId}`);
+        }
+      }).catch(() => undefined);
     });
 
     socket.on('send_message', (data: { taskId: string; content: string }) => {
-      const task = memoryDb.tasks.findById(data.taskId);
-      if (!task) return;
-      if (task.posterId !== userId && task.workerId !== userId) return;
-      const receiverId = task.posterId === userId ? task.workerId! : task.posterId;
-      const message = memoryDb.messages.create({
-        taskId: data.taskId,
-        senderId: userId,
-        receiverId,
-        content: data.content,
-        read: false,
-      });
-      const sender = memoryDb.users.findById(userId);
-      io.to(`task:${data.taskId}`).emit('new_message', {
-        ...message,
-        sender: sender ? { _id: sender._id, fullName: sender.fullName, profilePhoto: sender.profilePhoto } : null,
-      });
-      createNotification({
-        userId: receiverId,
-        type: 'new_message',
-        title: 'New Message',
-        message: `${sender?.fullName} sent you a message`,
-        link: `/chat/${data.taskId}`,
-      });
+      void (async () => {
+        const task = await findRecord<ITask>(Task, data.taskId);
+        if (!task || (task.posterId !== userId && task.workerId !== userId)) return;
+        const receiverId = task.posterId === userId ? task.workerId : task.posterId;
+        if (!receiverId) return;
+        const [message, sender] = await Promise.all([
+          insertRecord<IMessage>(Message, {
+            taskId: data.taskId,
+            senderId: userId,
+            receiverId,
+            content: data.content,
+            read: false,
+          }),
+          findRecord<IUser>(User, userId),
+        ]);
+        io.to(`task:${data.taskId}`).emit('new_message', {
+          ...message,
+          sender: sender ? { _id: sender._id, fullName: sender.fullName, profilePhoto: sender.profilePhoto } : null,
+        });
+        await createNotification({
+          userId: receiverId,
+          type: 'new_message',
+          title: 'New Message',
+          message: `${sender?.fullName || 'Someone'} sent you a message`,
+          link: `/chat/${data.taskId}`,
+        });
+      })().catch(() => undefined);
     });
 
     socket.on('disconnect', () => {

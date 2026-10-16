@@ -18,9 +18,11 @@ interface ExpressResponse {
 async function forwardToExpress(request: NextRequest): Promise<Response> {
   try {
     await initializeApi();
-  } catch (error) {
-    console.error("Unable to initialize the TaskAnt API", error);
-    return Response.json({ message: "Internal server error" }, { status: 500 });
+  } catch {
+    return Response.json(
+      { message: "TaskAnt API initialization failed because the database is unavailable." },
+      { status: 503 },
+    );
   }
 
   try {
@@ -70,8 +72,7 @@ async function forwardToExpress(request: NextRequest): Promise<Response> {
       status: result.statusCode,
       headers: responseHeaders,
     });
-  } catch (error) {
-    console.error("TaskAnt API request failed", error);
+  } catch {
     return Response.json({ message: "Internal server error" }, { status: 500 });
   }
 }
