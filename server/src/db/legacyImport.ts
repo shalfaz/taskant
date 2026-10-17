@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import mongoose, { type Model } from 'mongoose';
+import { config } from '../config/index';
 import {
   Bid,
   Message,
@@ -99,6 +100,14 @@ async function isCompletelyEmpty(session?: mongoose.ClientSession): Promise<bool
 }
 
 export async function importLegacyStoreIfMongoEmpty(): Promise<void> {
+  if (
+    config.nodeEnv !== 'development' ||
+    process.env.TASKANT_IMPORT_LEGACY_DATA !== 'true' ||
+    process.env.VERCEL_ENV === 'production'
+  ) {
+    return;
+  }
+
   const storePath = path.join(process.cwd(), 'server', 'data', 'store.json');
   if (!fs.existsSync(storePath) || !(await isCompletelyEmpty())) return;
 
