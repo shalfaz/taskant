@@ -44,12 +44,6 @@ export default function LoginPage() {
           <Logo size="lg" className="[&_span]:text-white [&_span_span]:text-brand-200 mb-8" showTagline />
           <h2 className="text-3xl font-bold mb-4">Welcome Back</h2>
           <p className="text-brand-100">Sign in to manage your tasks, bids, and messages.</p>
-          <div className="mt-8 p-4 bg-white/10 rounded-xl text-sm">
-            <p className="font-medium mb-2">Demo Accounts:</p>
-            <p>shohan@taskant.com / password123</p>
-            <p>rahim@taskant.com / password123</p>
-            <p>admin@taskant.com / password123</p>
-          </div>
         </div>
       </div>
       <div className="flex-1 flex items-center justify-center p-8">
