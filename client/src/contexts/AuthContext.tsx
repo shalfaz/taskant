@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authApi } from '../services/api';
+import { disconnectSocket } from '../services/socket';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -8,7 +9,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (data: Record<string, string>) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<boolean>;
   updateUser: (user: User) => void;
   isAdmin: boolean;
 }
@@ -90,8 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(null);
           }
         }
-      } catch (error) {
-        console.error('Unable to restore the saved TaskAnt session', error);
+      } catch {
+        console.error('Unable to restore the saved TaskAnt session');
       } finally {
         setLoading(false);
       }
@@ -132,11 +133,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('taskant_user', JSON.stringify(res.data.user));
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('taskant_token');
-    localStorage.removeItem('taskant_user');
+  const logout = async (): Promise<boolean> => {
+    let serverRevoked = false;
+    try {
+      await authApi.logout();
+      serverRevoked = true;
+    } catch {
+      // The caller can report that server-side revocation was not confirmed.
+    } finally {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('taskant_token');
+      localStorage.removeItem('taskant_user');
+      disconnectSocket();
+    }
+    return serverRevoked;
   };
 
   const updateUser = (updated: User) => {

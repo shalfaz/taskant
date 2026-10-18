@@ -23,6 +23,7 @@ export interface IUser {
   skills?: string[];
   profilePhoto?: string;
   role: 'user' | 'admin';
+  tokenVersion?: number;
   verificationStatus: VerificationStatus;
   rating: number;
   reviewCount: number;

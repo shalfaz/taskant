@@ -17,7 +17,16 @@ async function enrichBid(bid: IBid) {
   return { ...bid, bidder: bidder ? toPublicUser(bidder) : null };
 }
 
-router.get('/task/:taskId', authenticate, asyncHandler(async (req, res) => {
+router.get('/task/:taskId', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+  const task = await findRecord<ITask>(Task, req.params.taskId);
+  if (!task) {
+    res.status(404).json({ message: 'Task not found' });
+    return;
+  }
+  if (task.posterId !== req.user!.id) {
+    res.status(403).json({ message: 'Only the task poster can view bids' });
+    return;
+  }
   const bids = await findRecords<IBid>(Bid, { taskId: req.params.taskId }, { createdAt: -1 });
   res.json({ bids: await Promise.all(bids.map(enrichBid)) });
 }));

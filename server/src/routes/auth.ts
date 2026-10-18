@@ -8,6 +8,7 @@ import { hashPassword, comparePassword, signToken, toPublicUser } from '../utils
 import { validate, asyncHandler } from '../middleware/validate';
 import { authenticate } from '../middleware/auth';
 import type { AuthRequest } from '../types/index';
+import { disconnectUserSockets } from '../socket/sessions';
 
 const router = Router();
 
@@ -52,7 +53,7 @@ router.post(
       }
       throw error;
     }
-    const token = signToken(user._id, user.role);
+    const token = signToken(user._id, user.role, user.tokenVersion ?? 0);
     res.status(201).json({ token, user: toPublicUser(user, true) });
   })
 );
@@ -63,22 +64,44 @@ router.post(
   validate,
   asyncHandler(async (req: Request, res: Response) => {
     const { email, password } = req.body;
+    res.locals.diagnosticStage = 'auth.login.user_lookup';
     const user = await User.findOne({ email: String(email).toLowerCase() }).lean().exec();
     if (!user) {
       res.status(401).json({ message: 'Invalid email or password' });
       return;
     }
+    res.locals.diagnosticStage = 'auth.login.user_normalize';
     const record = toRecord<IUser>(user);
     if (record.isSuspended) {
       res.status(403).json({ message: 'Your account has been suspended' });
       return;
     }
+    res.locals.diagnosticStage = 'auth.login.password_compare';
     if (!(await comparePassword(password, record.password))) {
       res.status(401).json({ message: 'Invalid email or password' });
       return;
     }
-    const token = signToken(record._id, record.role);
+    res.locals.diagnosticStage = 'auth.login.jwt_sign';
+    const token = signToken(record._id, record.role, record.tokenVersion ?? 0);
+    res.locals.diagnosticStage = 'auth.login.response';
     res.json({ token, user: toPublicUser(record, true) });
+  })
+);
+
+router.post(
+  '/logout',
+  authenticate,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const result = await User.updateOne(
+      { _id: req.user!.id },
+      { $inc: { tokenVersion: 1 } }
+    ).exec();
+    if (result.matchedCount === 0) {
+      res.status(401).json({ message: 'Account not found' });
+      return;
+    }
+    disconnectUserSockets(req.user!.id);
+    res.status(204).end();
   })
 );
 

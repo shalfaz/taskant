@@ -15,6 +15,7 @@ export interface UserDocument extends Document {
   skills?: string[];
   profilePhoto?: string;
   role: 'user' | 'admin';
+  tokenVersion: number;
   verificationStatus: VerificationStatus;
   rating: number;
   reviewCount: number;
@@ -34,6 +35,7 @@ const userSchema = new Schema<UserDocument>(
     skills: [String],
     profilePhoto: String,
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    tokenVersion: { type: Number, default: 0 },
     verificationStatus: {
       type: String,
       enum: ['Unverified', 'Pending', 'Verified', 'Rejected'],
@@ -256,12 +258,30 @@ const reportSchema = new Schema<ReportDocument>(
   { timestamps: true }
 );
 
-export const User: Model<UserDocument> = mongoose.model<UserDocument>('User', userSchema);
-export const Task: Model<TaskDocument> = mongoose.model<TaskDocument>('Task', taskSchema);
-export const Bid: Model<BidDocument> = mongoose.model<BidDocument>('Bid', bidSchema);
-export const Message: Model<MessageDocument> = mongoose.model<MessageDocument>('Message', messageSchema);
-export const Notification: Model<NotificationDocument> = mongoose.model<NotificationDocument>('Notification', notificationSchema);
-export const Payment: Model<PaymentDocument> = mongoose.model<PaymentDocument>('Payment', paymentSchema);
-export const Review: Model<ReviewDocument> = mongoose.model<ReviewDocument>('Review', reviewSchema);
-export const Verification: Model<VerificationDocument> = mongoose.model<VerificationDocument>('Verification', verificationSchema);
-export const Report: Model<ReportDocument> = mongoose.model<ReportDocument>('Report', reportSchema);
+export const User: Model<UserDocument> =
+  (mongoose.models.User as Model<UserDocument> | undefined) ??
+  mongoose.model<UserDocument>('User', userSchema);
+export const Task: Model<TaskDocument> =
+  (mongoose.models.Task as Model<TaskDocument> | undefined) ??
+  mongoose.model<TaskDocument>('Task', taskSchema);
+export const Bid: Model<BidDocument> =
+  (mongoose.models.Bid as Model<BidDocument> | undefined) ??
+  mongoose.model<BidDocument>('Bid', bidSchema);
+export const Message: Model<MessageDocument> =
+  (mongoose.models.Message as Model<MessageDocument> | undefined) ??
+  mongoose.model<MessageDocument>('Message', messageSchema);
+export const Notification: Model<NotificationDocument> =
+  (mongoose.models.Notification as Model<NotificationDocument> | undefined) ??
+  mongoose.model<NotificationDocument>('Notification', notificationSchema);
+export const Payment: Model<PaymentDocument> =
+  (mongoose.models.Payment as Model<PaymentDocument> | undefined) ??
+  mongoose.model<PaymentDocument>('Payment', paymentSchema);
+export const Review: Model<ReviewDocument> =
+  (mongoose.models.Review as Model<ReviewDocument> | undefined) ??
+  mongoose.model<ReviewDocument>('Review', reviewSchema);
+export const Verification: Model<VerificationDocument> =
+  (mongoose.models.Verification as Model<VerificationDocument> | undefined) ??
+  mongoose.model<VerificationDocument>('Verification', verificationSchema);
+export const Report: Model<ReportDocument> =
+  (mongoose.models.Report as Model<ReportDocument> | undefined) ??
+  mongoose.model<ReportDocument>('Report', reportSchema);

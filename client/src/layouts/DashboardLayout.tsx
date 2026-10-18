@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
+import axios from 'axios';
 import {
   LayoutDashboard, PlusCircle, ListTodo, CheckSquare, Search,
   MessageSquare, Bell, CreditCard, Star, Shield, User, Menu, X, LogOut
@@ -43,10 +45,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const links = isAdmin ? adminLinks : userLinks;
 
+  const handleLogout = async () => {
+    const serverRevoked = await logout();
+    router.push('/');
+    if (!serverRevoked) {
+      toast.error(
+        'Signed out here, but server-side revocation could not be confirmed. A copied token may remain valid until it expires.'
+      );
+    }
+  };
+
   useEffect(() => {
     if (user && !isAdmin) {
       notificationsApi.list().then((res) => setUnread(res.data.unreadCount)).catch((error: unknown) => {
-        console.error('Unable to load notifications', error);
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        console.error('Unable to load notifications', { status });
       });
     }
   }, [user, isAdmin, pathname]);
@@ -101,7 +114,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <button
-            onClick={() => { logout(); router.push('/'); }}
+            onClick={() => void handleLogout()}
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
           >
             <LogOut className="w-4 h-4" /> Log Out

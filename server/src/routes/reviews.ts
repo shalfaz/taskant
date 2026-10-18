@@ -33,7 +33,25 @@ router.post(
       res.status(400).json({ message: 'Can only review completed tasks' });
       return;
     }
-    const existing = await Review.exists({ taskId, reviewerId: req.user!.id });
+    const reviewerId = req.user!.id;
+    let expectedRevieweeId: string;
+    if (task.posterId === reviewerId) {
+      if (!task.workerId) {
+        res.status(400).json({ message: 'Task has no assigned worker to review' });
+        return;
+      }
+      expectedRevieweeId = task.workerId;
+    } else if (task.workerId === reviewerId) {
+      expectedRevieweeId = task.posterId;
+    } else {
+      res.status(403).json({ message: 'Only task participants can submit a review' });
+      return;
+    }
+    if (String(revieweeId) !== expectedRevieweeId) {
+      res.status(400).json({ message: 'You can only review the other task participant' });
+      return;
+    }
+    const existing = await Review.exists({ taskId: task._id, reviewerId });
     if (existing) {
       res.status(400).json({ message: 'You have already reviewed this task' });
       return;
@@ -44,26 +62,26 @@ router.post(
       return;
     }
     const review = await insertRecord<IReview>(Review, {
-      taskId,
-      reviewerId: req.user!.id,
-      revieweeId,
+      taskId: task._id,
+      reviewerId,
+      revieweeId: expectedRevieweeId,
       rating: Number(rating),
       comment,
     });
-    const reviewee = await findRecord<IUser>(User, String(revieweeId));
+    const reviewee = await findRecord<IUser>(User, expectedRevieweeId);
     if (reviewee) {
-      const allReviews = await findRecords<IReview>(Review, { revieweeId: String(revieweeId) });
+      const allReviews = await findRecords<IReview>(Review, { revieweeId: expectedRevieweeId });
       const average = allReviews.reduce((sum, item) => sum + item.rating, 0) / allReviews.length;
-      await User.findByIdAndUpdate(revieweeId, {
+      await User.findByIdAndUpdate(expectedRevieweeId, {
         $set: { rating: Math.round(average * 10) / 10, reviewCount: allReviews.length },
       }).exec();
     }
     await createNotification({
-      userId: String(revieweeId),
+      userId: expectedRevieweeId,
       type: 'new_review',
       title: 'New Review',
       message: `You received a ${rating}-star review`,
-      link: `/profile/${revieweeId}`,
+      link: `/profile/${expectedRevieweeId}`,
     });
     res.status(201).json({ review });
   })

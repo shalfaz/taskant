@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'node:crypto';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { assertProductionConfig, config } from './config/index';
@@ -25,6 +26,17 @@ app.set('trust proxy', 1);
 
 app.use(cors({ origin: config.clientUrl, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => {
+  const suppliedId = req.get('x-request-id');
+  const requestId =
+    suppliedId && /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(suppliedId)
+      ? suppliedId
+      : randomUUID();
+  res.locals.requestId = requestId;
+  res.locals.diagnosticStage = 'api.request';
+  res.setHeader('X-Request-ID', requestId);
+  next();
+});
 app.use(
   rateLimit({
     windowMs: config.rateLimitWindowMs,
