@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Response } from 'express';
 import { body } from 'express-validator';
-import { findRecord, findRecords, updateRecord } from '../db/records';
+import { findRecord, findRecords, toRecord, validId, updateRecord } from '../db/records';
 import { Payment, Report, Task, User, Verification } from '../models/index';
 import type { IReport, ITask, IUser, IVerification } from '../types/index';
 import { toPublicUser } from '../utils/auth';
@@ -9,6 +9,7 @@ import { authenticate, requireAdmin } from '../middleware/auth';
 import { validate, asyncHandler } from '../middleware/validate';
 import { createNotification } from '../services/notifications';
 import type { AuthRequest } from '../types/index';
+import { disconnectUserSockets } from '../socket/sessions';
 
 const router = Router();
 router.use(authenticate, requireAdmin);
@@ -48,13 +49,24 @@ router.get('/users', asyncHandler(async (_req, res) => {
 }));
 
 router.patch('/users/:id/suspend', asyncHandler(async (req, res) => {
-  const user = await updateRecord<IUser>(User, req.params.id, {
-    isSuspended: req.body.suspended ?? true,
-  });
+  if (!validId(req.params.id)) {
+    res.status(404).json({ message: 'User not found' });
+    return;
+  }
+  const document = await User.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: { isSuspended: req.body.suspended ?? true },
+      $inc: { tokenVersion: 1 },
+    },
+    { new: true, runValidators: true }
+  ).lean().exec();
+  const user = document ? toRecord<IUser>(document) : null;
   if (!user) {
     res.status(404).json({ message: 'User not found' });
     return;
   }
+  if (user.isSuspended) disconnectUserSockets(user._id);
   res.json({ user: toPublicUser(user, true) });
 }));
 

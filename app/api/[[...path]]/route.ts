@@ -1,7 +1,9 @@
 import type { Handler } from "serverless-http";
 import serverless from "serverless-http";
 import type { NextRequest } from "next/server";
+import { randomUUID } from "node:crypto";
 import { app, initializeApi } from "../../../server/src/index";
+import { logDevelopmentDiagnostic } from "../../../server/src/middleware/validate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,24 +18,28 @@ interface ExpressResponse {
 }
 
 async function forwardToExpress(request: NextRequest): Promise<Response> {
+  const requestId = randomUUID();
   try {
     await initializeApi();
-  } catch {
+  } catch (error) {
+    logDevelopmentDiagnostic(requestId, "api.initialize", error);
     return Response.json(
       { message: "TaskAnt API configuration is incomplete or its database is unavailable." },
-      { status: 503 },
+      { status: 503, headers: { "X-Request-ID": requestId } },
     );
   }
 
   try {
     const url = new URL(request.url);
     const body = Buffer.from(await request.arrayBuffer());
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-request-id", requestId);
     const event = {
       version: "2.0",
       routeKey: "$default",
       rawPath: url.pathname,
       rawQueryString: url.search.slice(1),
-      headers: Object.fromEntries(request.headers.entries()),
+      headers: Object.fromEntries(requestHeaders.entries()),
       requestContext: {
         http: {
           method: request.method,
@@ -57,6 +63,7 @@ async function forwardToExpress(request: NextRequest): Promise<Response> {
         for (const item of value) responseHeaders.append(name, item);
       }
     }
+    responseHeaders.set("X-Request-ID", requestId);
 
     const responseBody =
       request.method === "HEAD" ||
@@ -72,8 +79,12 @@ async function forwardToExpress(request: NextRequest): Promise<Response> {
       status: result.statusCode,
       headers: responseHeaders,
     });
-  } catch {
-    return Response.json({ message: "Internal server error" }, { status: 500 });
+  } catch (error) {
+    logDevelopmentDiagnostic(requestId, "api.forward", error);
+    return Response.json(
+      { message: "Internal server error" },
+      { status: 500, headers: { "X-Request-ID": requestId } },
+    );
   }
 }
 

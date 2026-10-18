@@ -22,7 +22,11 @@ export const authenticate = asyncHandler(
       res.status(401).json({ message: 'Account not found or suspended' });
       return;
     }
-    req.user = decoded;
+    if (decoded.tokenVersion !== (user.tokenVersion ?? 0)) {
+      res.status(401).json({ message: 'Invalid or expired token' });
+      return;
+    }
+    req.user = { id: decoded.id, role: user.role };
     _next();
   }
 );
@@ -42,7 +46,13 @@ export const optionalAuth = asyncHandler(
       const decoded = verifyToken(header.split(' ')[1]);
       if (decoded) {
         const user = await findRecord<IUser>(User, decoded.id);
-        if (user && !user.isSuspended) req.user = decoded;
+        if (
+          user &&
+          !user.isSuspended &&
+          decoded.tokenVersion === (user.tokenVersion ?? 0)
+        ) {
+          req.user = { id: decoded.id, role: user.role };
+        }
       }
     }
     next();

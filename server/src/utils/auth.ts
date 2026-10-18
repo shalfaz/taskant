@@ -11,15 +11,42 @@ export async function comparePassword(password: string, hash: string): Promise<b
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(userId: string, role: 'user' | 'admin'): string {
-  return jwt.sign({ id: userId, role }, config.jwtSecret, {
+export interface AuthToken {
+  id: string;
+  role: 'user' | 'admin';
+  tokenVersion: number;
+}
+
+export function signToken(
+  userId: string,
+  role: 'user' | 'admin',
+  tokenVersion: number
+): string {
+  return jwt.sign({ id: userId, role, tokenVersion }, config.jwtSecret, {
     expiresIn: config.jwtExpiresIn as SignOptions['expiresIn'],
+    algorithm: 'HS256',
   });
 }
 
-export function verifyToken(token: string): { id: string; role: 'user' | 'admin' } | null {
+export function verifyToken(token: string): AuthToken | null {
   try {
-    return jwt.verify(token, config.jwtSecret) as { id: string; role: 'user' | 'admin' };
+    const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
+    if (
+      typeof decoded !== 'object' ||
+      decoded === null ||
+      typeof decoded.id !== 'string' ||
+      !decoded.id ||
+      (decoded.role !== 'user' && decoded.role !== 'admin') ||
+      !Number.isSafeInteger(decoded.tokenVersion) ||
+      decoded.tokenVersion < 0
+    ) {
+      return null;
+    }
+    return {
+      id: decoded.id,
+      role: decoded.role,
+      tokenVersion: decoded.tokenVersion,
+    };
   } catch {
     return null;
   }
