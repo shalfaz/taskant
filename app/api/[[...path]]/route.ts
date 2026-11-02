@@ -23,6 +23,15 @@ async function forwardToExpress(request: NextRequest): Promise<Response> {
     await initializeApi();
   } catch (error) {
     logDevelopmentDiagnostic(requestId, "api.initialize", error);
+    const stage =
+      error instanceof Error && error.message.includes("JWT_SECRET")
+        ? "jwt_config"
+        : "mongodb_connection";
+    console.error("[TaskAnt API initialization]", {
+      requestId,
+      stage,
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
     return Response.json(
       { message: "TaskAnt API configuration is incomplete or its database is unavailable." },
       { status: 503, headers: { "X-Request-ID": requestId } },
