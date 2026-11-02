@@ -3,29 +3,31 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import {
-  LayoutDashboard, PlusCircle, ListTodo, CheckSquare, Search,
-  MessageSquare, Bell, CreditCard, Star, Shield, User, Menu, X, LogOut
+  Bell, Bookmark, CarFront, CheckSquare, ChevronDown, CircleHelp, CreditCard,
+  Grid2X2, Home, LayoutDashboard, ListTodo, LogOut, Menu, MessageSquare,
+  Search, Settings, Shield, Star, Store, User, X,
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi } from '../services/api';
 
 const userLinks = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/post-task', icon: PlusCircle, label: 'Post a Task' },
-  { to: '/my-tasks/posted', icon: ListTodo, label: 'My Posted Tasks' },
-  { to: '/my-tasks/accepted', icon: CheckSquare, label: 'My Accepted Tasks' },
+  { to: '/profile', icon: User, label: 'My Profile' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'My Tasks' },
+  { to: '/my-tasks/posted', icon: ListTodo, label: 'Posted Tasks' },
+  { to: '/my-tasks/accepted', icon: CheckSquare, label: 'Accepted Tasks' },
   { to: '/tasks', icon: Search, label: 'Browse Tasks' },
+  { to: '/categories', icon: Grid2X2, label: 'Categories' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
+  { to: '/saved', icon: Bookmark, label: 'Saved Tasks' },
   { to: '/payments', icon: CreditCard, label: 'Payments' },
   { to: '/reviews', icon: Star, label: 'Reviews' },
-  { to: '/safety', icon: Shield, label: 'Safety Center' },
-  { to: '/profile', icon: User, label: 'My Profile' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/help', icon: CircleHelp, label: 'Help' },
 ];
 
 const adminLinks = [
@@ -42,17 +44,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-
+  const [search, setSearch] = useState('');
   const links = isAdmin ? adminLinks : userLinks;
 
   const handleLogout = async () => {
     const serverRevoked = await logout();
-    router.push('/');
-    if (!serverRevoked) {
-      toast.error(
-        'Signed out here, but server-side revocation could not be confirmed. A copied token may remain valid until it expires.'
-      );
-    }
+    router.push('/login');
+    if (!serverRevoked) toast.error('Signed out locally, but server-side revocation could not be confirmed.');
   };
 
   useEffect(() => {
@@ -64,76 +62,78 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [user, isAdmin, pathname]);
 
+  const renderSidebarLinks = () => (
+    <nav className="space-y-1">
+      {links.map((link) => {
+        const Icon = link.icon;
+        const active = pathname === link.to;
+        return (
+          <Link key={link.to} href={link.to} onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${active ? 'bg-orange-50 text-orange-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+            <Icon className={`h-5 w-5 ${active ? 'text-orange-600' : 'text-slate-500'}`} />
+            {link.label}
+            {link.to === '/messages' && <span className="ml-auto h-2 w-2 rounded-full bg-orange-500" />}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
+    <div className="min-h-screen bg-[#f2f4f7]">
+      {sidebarOpen && <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-100">
-          <Link href="/"><Logo size="sm" /></Link>
-          <button className="lg:hidden p-1" onClick={() => setSidebarOpen(false)}>
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <nav className="p-3 space-y-0.5 overflow-y-auto max-h-[calc(100vh-8rem)]">
-          {links.map((link) => {
-            const Icon = link.icon;
-            const active = pathname === link.to;
-            return (
-              <Link
-                key={link.to}
-                href={link.to}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  active ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                <Icon className="w-5 h-5 shrink-0" />
-                {link.label}
-                {link.to === '/notifications' && unread > 0 && (
-                  <span className="ml-auto bg-brand-600 text-white text-xs rounded-full px-2 py-0.5">{unread}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-100 bg-white">
-          <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-sm font-semibold text-brand-700">
-              {user?.fullName.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user?.fullName}</p>
-              <p className="text-xs text-gray-500 truncate">{user?.location}</p>
-            </div>
+      <aside className="fixed left-0 top-17 z-40 hidden h-[calc(100vh-68px)] w-65 overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 lg:block">
+        <div className="mb-3 flex items-center gap-3 rounded-xl px-3 py-2.5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
+            {user?.fullName.charAt(0)}
           </div>
-          <button
-            onClick={() => void handleLogout()}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
-          >
-            <LogOut className="w-4 h-4" /> Log Out
-          </button>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-slate-900">{user?.fullName}</p>
+            <p className="truncate text-xs text-slate-500">{user?.location}</p>
+          </div>
         </div>
+        {renderSidebarLinks()}
+        <button onClick={() => void handleLogout()} className="mt-4 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
+          <LogOut className="h-5 w-5" /> Log out
+        </button>
       </aside>
 
-      {/* Main content */}
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-16 flex items-center px-4 lg:px-8">
-          <button className="lg:hidden p-2 mr-2" onClick={() => setSidebarOpen(true)}>
-            <Menu className="w-6 h-6" />
-          </button>
-          <h1 className="text-lg font-semibold text-gray-900 capitalize">
-            {links.find((l) => l.to === pathname)?.label || 'TaskAnt'}
-          </h1>
-        </header>
-        <main className="p-4 lg:p-8">{children}</main>
-      </div>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-70 bg-white shadow-2xl transition-transform lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex h-17 items-center justify-between border-b px-4"><Link href="/dashboard"><Logo size="sm" /></Link><button className="p-2" onClick={() => setSidebarOpen(false)}><X className="h-5 w-5" /></button></div>
+        <div className="overflow-y-auto p-3">{renderSidebarLinks()}</div>
+      </aside>
+
+      <header className="sticky top-0 z-30 flex h-17 items-center border-b border-slate-200 bg-white px-3 shadow-sm sm:px-5">
+        <button className="mr-1 p-2 lg:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-6 w-6" /></button>
+        <Link href="/dashboard" className="mr-4 hidden sm:block"><Logo size="sm" /></Link>
+        <form className="relative max-w-xl flex-1" onSubmit={(event) => { event.preventDefault(); if (search.trim()) router.push(`/tasks?q=${encodeURIComponent(search.trim())}`); }}>
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search tasks" placeholder="Search tasks, services, or people" className="h-10 w-full rounded-full border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-100" />
+        </form>
+        {!isAdmin && (
+          <nav className="ml-3 hidden h-full items-stretch md:flex">
+            {[
+              { href: '/dashboard', icon: Home, label: 'Home' },
+              { href: '/messages', icon: MessageSquare, label: 'Messages' },
+              { href: '/notifications', icon: Bell, label: 'Notifications' },
+              { href: '/tasks', icon: Store, label: 'Marketplace' },
+              { href: '/rides', icon: CarFront, label: 'Ride booking' },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} title={item.label} className={`relative flex min-w-14.5 items-center justify-center border-b-2 px-3 ${pathname === item.href ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}>
+                <item.icon className="h-5 w-5" />
+                {item.href === '/notifications' && unread > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />}
+              </Link>
+            ))}
+          </nav>
+        )}
+        <Link href="/profile" className="ml-2 flex items-center gap-1 rounded-full border border-slate-200 p-1.5 pl-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{user?.fullName.charAt(0)}</span>
+          <ChevronDown className="hidden h-4 w-4 text-slate-500 sm:block" />
+        </Link>
+      </header>
+
+      <main className="lg:pl-65">{children}</main>
     </div>
   );
 }

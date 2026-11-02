@@ -38,19 +38,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-600 to-brand-800 p-12 items-center justify-center">
-        <div className="text-white max-w-md">
-          <Logo size="lg" className="[&_span]:text-white [&_span_span]:text-brand-200 mb-8" showTagline />
-          <h2 className="text-3xl font-bold mb-4">Welcome Back</h2>
-          <p className="text-brand-100">Sign in to manage your tasks, bids, and messages.</p>
+    <div className="min-h-screen bg-slate-950 lg:grid lg:grid-cols-[1.08fr_0.92fr]">
+      <div className="relative hidden overflow-hidden bg-slate-950 p-12 lg:flex lg:flex-col lg:justify-between">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(249,115,22,0.22),transparent_32%),radial-gradient(circle_at_85%_80%,rgba(249,115,22,0.12),transparent_28%)]" />
+        <Logo size="lg" className="relative [&_span]:text-white [&_span_span]:text-brand-200" showTagline />
+        <div className="relative max-w-xl">
+          <p className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-orange-400">Your local task network</p>
+          <h2 className="text-5xl font-extrabold leading-tight text-white">Get things done.<br /><span className="text-orange-500">Help your community.</span></h2>
+          <p className="mt-6 max-w-lg text-lg leading-8 text-slate-300">Post a task when you need support, or earn by accepting work from people nearby.</p>
         </div>
+        <p className="relative text-sm text-slate-500">One account. Every opportunity.</p>
       </div>
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex min-h-screen items-center justify-center bg-white p-6 sm:p-10">
         <div className="w-full max-w-md">
-          <div className="lg:hidden mb-8"><Logo showTagline /></div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Sign In</h1>
-          <p className="text-gray-500 mb-8">Enter your credentials to access your account</p>
+          <div className="mb-8 lg:hidden"><Logo showTagline /></div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">Welcome back</p>
+          <h1 className="mt-2 text-3xl font-extrabold text-slate-950">Sign in to TaskAnt</h1>
+          <p className="mb-8 mt-2 text-sm text-slate-500">Access your marketplace, tasks, bids, and messages.</p>
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} placeholder="you@example.com" />
             <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} placeholder="••••••••" />

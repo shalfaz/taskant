@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PlusCircle, ListTodo, CheckSquare, Bell, DollarSign, Star } from 'lucide-react';
+import {
+  BadgeDollarSign, CheckSquare, ChevronRight, Clock3, Image as ImageIcon, ListTodo,
+  MapPin, Plus, Search, SlidersHorizontal, Sparkles,
+} from 'lucide-react';
 import { dashboardApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Card, CardBody, LoadingSpinner } from '../components/ui/Card';
+import { LoadingSpinner } from '../components/ui/Card';
 import TaskCard from '../components/TaskCard';
-import Button from '../components/ui/Button';
 import { formatCurrency } from '../utils/format';
-import type { Task, Bid, DashboardStats } from '../types';
+import { TASK_CATEGORIES, type Task, type Bid, type DashboardStats } from '../types';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -26,115 +28,110 @@ export default function DashboardPage() {
     dashboardApi.get().then((res) => setData(res.data)).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingSpinner />;
-  if (!data) return null;
+  if (loading) return <LoadingSpinner className="min-h-[60vh]" />;
 
-  const { stats } = data;
-  const statCards = [
-    { label: 'Posted Tasks', value: stats.postedCount, icon: ListTodo, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Accepted Tasks', value: stats.acceptedCount, icon: CheckSquare, color: 'bg-green-50 text-green-600' },
-    { label: 'Pending Bids', value: stats.pendingBids, icon: Bell, color: 'bg-purple-50 text-purple-600' },
-    { label: 'Earnings', value: formatCurrency(stats.earnings), icon: DollarSign, color: 'bg-brand-50 text-brand-600' },
-    { label: 'Spending', value: formatCurrency(stats.spending), icon: DollarSign, color: 'bg-orange-50 text-orange-600' },
-    { label: 'Rating', value: `${user?.rating.toFixed(1)} ⭐`, icon: Star, color: 'bg-amber-50 text-amber-600' },
-  ];
+  const tasks = data?.availableTasks ?? [];
+  const stats = data?.stats;
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Welcome, {user?.fullName.split(' ')[0]}!</h2>
-          <p className="text-gray-500 mt-1">Manage your posted tasks, accepted work, and earnings</p>
+    <div className="mx-auto grid grid-cols-1 gap-5 px-3 py-5 xl:grid-cols-[minmax(0,680px)_300px] 2xl:grid-cols-[minmax(0,680px)_300px]" style={{ maxWidth: 1180 }}>
+      <section className="min-w-0">
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">Local marketplace</p>
+            <h1 className="mt-1 text-2xl font-extrabold text-slate-950">Good morning, {user?.fullName.split(' ')[0]}</h1>
+          </div>
+          <div className="hidden items-center gap-2 text-xs font-semibold text-slate-500 sm:flex">
+            <MapPin className="h-4 w-4 text-orange-500" /> {user?.location}
+          </div>
         </div>
-        <Link href="/post-task"><Button><PlusCircle className="w-4 h-4" /> Post a Task</Button></Link>
-      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {statCards.map((s) => (
-          <Card key={s.label}>
-            <CardBody className="!py-4">
-              <div className={`w-10 h-10 rounded-lg ${s.color} flex items-center justify-center mb-3`}>
-                <s.icon className="w-5 h-5" />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-              <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-            </CardBody>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <div className="px-6 py-4 border-b flex justify-between items-center">
-            <h3 className="font-semibold">My Posted Tasks</h3>
-            <Link href="/my-tasks/posted" className="text-sm text-brand-600 hover:underline">View all</Link>
+        <Link href="/post-task" className="mb-4 block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">{user?.fullName.charAt(0)}</div>
+            <div className="flex h-11 flex-1 items-center rounded-full bg-slate-100 px-5 text-sm text-slate-500">What task needs doing?</div>
+            <button className="hidden h-10 w-10 items-center justify-center rounded-full bg-orange-50 text-orange-600 sm:flex"><Plus className="h-5 w-5" /></button>
           </div>
-          <CardBody>
-            {data.recentPosted.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-8">No tasks posted yet</p>
-            ) : (
-              <div className="space-y-3">
-                {data.recentPosted.map((t) => (
-                  <Link key={t._id} href={`/tasks/${t._id}`} className="block p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
-                    <p className="font-medium text-sm">{t.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{t.status} · {t.location}</p>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardBody>
-        </Card>
-
-        <Card>
-          <div className="px-6 py-4 border-b flex justify-between items-center">
-            <h3 className="font-semibold">My Accepted Tasks</h3>
-            <Link href="/my-tasks/accepted" className="text-sm text-brand-600 hover:underline">View all</Link>
+          <div className="mt-3 flex border-t border-slate-100 pt-3">
+            <span className="flex flex-1 items-center justify-center gap-2 text-xs font-bold text-slate-600"><BadgeDollarSign className="h-4 w-4 text-orange-500" /> Set a budget</span>
+            <span className="flex flex-1 items-center justify-center gap-2 border-l border-slate-100 text-xs font-bold text-slate-600"><ImageIcon className="h-4 w-4 text-blue-500" /> Add details</span>
           </div>
-          <CardBody>
-            {data.recentAccepted.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-8">No accepted tasks yet</p>
-            ) : (
-              <div className="space-y-3">
-                {data.recentAccepted.map((t) => (
-                  <Link key={t._id} href={`/tasks/${t._id}`} className="block p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
-                    <p className="font-medium text-sm">{t.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{t.status} · {t.location}</p>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardBody>
-        </Card>
-      </div>
+        </Link>
 
-      {data.pendingBids.length > 0 && (
-        <Card>
-          <div className="px-6 py-4 border-b"><h3 className="font-semibold">Pending Bids</h3></div>
-          <CardBody>
-            <div className="space-y-3">
-              {data.pendingBids.map((b) => (
-                <Link key={b._id} href={`/tasks/${b.taskId}`} className="flex justify-between p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
-                  <div>
-                    <p className="font-medium text-sm">{b.task?.title}</p>
-                    <p className="text-xs text-gray-500">Your bid: {formatCurrency(b.amount)}</p>
-                  </div>
-                  <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full h-fit">Pending</span>
-                </Link>
-              ))}
+        {stats && (
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            {[
+              { label: 'Posted', value: stats.postedCount, icon: ListTodo },
+              { label: 'Accepted', value: stats.acceptedCount, icon: CheckSquare },
+              { label: 'Earned', value: formatCurrency(stats.earnings), icon: BadgeDollarSign },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-slate-200 bg-white p-3">
+                <item.icon className="mb-2 h-4 w-4 text-orange-500" />
+                <p className="text-lg font-extrabold text-slate-950">{item.value}</p>
+                <p className="text-[11px] font-semibold text-slate-500">{item.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="font-extrabold text-slate-950">Fresh in your area</h2>
+            <p className="text-xs text-slate-500">{tasks.length} opportunities available</p>
+          </div>
+          <Link href="/tasks" className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"><SlidersHorizontal className="h-3.5 w-3.5" /> Filter</Link>
+        </div>
+
+        <div className="space-y-4">
+          {tasks.length ? tasks.map((task) => <TaskCard key={task._id} task={task} />) : (
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center">
+              <Search className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+              <h3 className="font-bold text-slate-900">No tasks available yet</h3>
+              <p className="mt-1 text-sm text-slate-500">Check back soon or post the first task in your area.</p>
             </div>
-          </CardBody>
-        </Card>
-      )}
+          )}
+        </div>
+      </section>
 
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Available Tasks Near You</h3>
-          <Link href="/tasks" className="text-sm text-brand-600 hover:underline">Browse all</Link>
+      <aside className="hidden space-y-4 xl:block">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-extrabold text-slate-950">Nearby tasks</h2>
+            <Link href="/tasks" className="text-xs font-bold text-orange-600">See all</Link>
+          </div>
+          <div className="space-y-3">
+            {tasks.slice(0, 3).map((task) => (
+              <Link key={task._id} href={`/tasks/${task._id}`} className="group flex gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><MapPin className="h-4 w-4" /></div>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-slate-800 group-hover:text-orange-600">{task.title}</p>
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-slate-500"><Clock3 className="h-3 w-3" /> {task.location}</p>
+                </div>
+                <span className="ml-auto text-xs font-extrabold text-orange-600">{formatCurrency(task.budget)}</span>
+              </Link>
+            ))}
+            {!tasks.length && <p className="text-xs text-slate-500">No nearby tasks are available.</p>}
+          </div>
         </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          {data.availableTasks.map((t) => <TaskCard key={t._id} task={t} />)}
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-3 text-sm font-extrabold text-slate-950">Popular categories</h2>
+          <div className="flex flex-wrap gap-2">
+            {TASK_CATEGORIES.slice(0, 6).map((category) => (
+              <Link key={category} href={`/tasks?category=${encodeURIComponent(category)}`} className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-700">
+                {category}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+
+        <div className="overflow-hidden rounded-2xl bg-slate-950 p-4 text-white">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-orange-500"><Sparkles className="h-5 w-5" /></div>
+          <h2 className="text-sm font-extrabold">Build a reliable local network</h2>
+          <p className="mt-1 text-xs leading-5 text-slate-300">Complete tasks, earn reviews, and discover trusted people nearby.</p>
+          <Link href="/reviews" className="mt-3 flex items-center text-xs font-bold text-orange-400">View your reviews <ChevronRight className="h-4 w-4" /></Link>
+        </div>
+      </aside>
     </div>
   );
 }
