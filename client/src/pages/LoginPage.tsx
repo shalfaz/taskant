@@ -41,7 +41,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-950 lg:grid lg:grid-cols-[1.08fr_0.92fr]">
       <div className="relative hidden overflow-hidden bg-slate-950 p-12 lg:flex lg:flex-col lg:justify-between">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(249,115,22,0.22),transparent_32%),radial-gradient(circle_at_85%_80%,rgba(249,115,22,0.12),transparent_28%)]" />
-        <Logo size="lg" className="relative [&_span]:text-white [&_span_span]:text-brand-200" showTagline />
+        <Logo size="lg" className="relative rounded-xl bg-white px-5 py-4 [&_span]:text-slate-700 [&_span_span]:text-slate-500" showTagline />
         <div className="relative max-w-xl">
           <p className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-orange-400">Your local task network</p>
           <h2 className="text-5xl font-extrabold leading-tight text-white">Get things done.<br /><span className="text-orange-500">Help your community.</span></h2>

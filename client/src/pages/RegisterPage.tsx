@@ -56,7 +56,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex">
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-600 to-brand-800 p-12 items-center justify-center">
         <div className="text-white max-w-md">
-          <Logo size="lg" className="[&_span]:text-white [&_span_span]:text-brand-200 mb-8" showTagline />
+          <Logo size="lg" className="mb-8 rounded-xl bg-white px-5 py-4 [&_span]:text-slate-700 [&_span_span]:text-slate-500" showTagline />
           <h2 className="text-3xl font-bold mb-4">Join TaskAnt</h2>
           <p className="text-brand-100">One account to post tasks and earn by helping others. No separate roles needed.</p>
         </div>

@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
 import {
   Bell, Bookmark, CarFront, CheckSquare, ChevronDown, CircleHelp, CreditCard,
   Grid2X2, Home, LayoutDashboard, ListTodo, LogOut, Menu, MessageSquare,
@@ -56,7 +55,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user && !isAdmin) {
       notificationsApi.list().then((res) => setUnread(res.data.unreadCount)).catch((error: unknown) => {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        const status = typeof error === 'object' && error !== null &&
+          'response' in error &&
+          typeof error.response === 'object' && error.response !== null &&
+          'status' in error.response &&
+          typeof error.response.status === 'number'
+          ? error.response.status
+          : undefined;
         console.error('Unable to load notifications', { status });
       });
     }
