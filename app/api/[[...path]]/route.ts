@@ -3,7 +3,10 @@ import serverless from "serverless-http";
 import type { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import { app, initializeApi } from "../../../server/src/index";
-import { logDevelopmentDiagnostic } from "../../../server/src/middleware/validate";
+import {
+  getSafeErrorDiagnostic,
+  logDevelopmentDiagnostic,
+} from "../../../server/src/middleware/validate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +26,7 @@ async function forwardToExpress(request: NextRequest): Promise<Response> {
     await initializeApi();
   } catch (error) {
     logDevelopmentDiagnostic(requestId, "api.initialize", error);
+    const diagnostic = getSafeErrorDiagnostic(error);
     const stage =
       error instanceof Error && error.message.includes("JWT_SECRET")
         ? "jwt_config"
@@ -30,7 +34,7 @@ async function forwardToExpress(request: NextRequest): Promise<Response> {
     console.error("[TaskAnt API initialization]", {
       requestId,
       stage,
-      errorName: error instanceof Error ? error.name : typeof error,
+      ...diagnostic,
     });
     return Response.json(
       { message: "TaskAnt API configuration is incomplete or its database is unavailable." },
