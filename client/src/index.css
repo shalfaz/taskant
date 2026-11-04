@@ -20,6 +20,15 @@
   box-sizing: border-box;
 }
 
+.taskant-sidebar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.taskant-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

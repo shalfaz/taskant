@@ -8,7 +8,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft,  CalendarDays, CheckCircle2, Clock3, DollarSign,
-  MapPin, MessageSquare, Send, Star, Users, WalletCards,
+  CarFront, MapPin, MessageSquare, PackageSearch, Send, ShieldCheck, Star, Users, WalletCards,
 } from 'lucide-react';
 import {
   bidsApi, dashboardApi, messagesApi, notificationsApi, paymentsApi, reviewsApi, tasksApi,
@@ -51,6 +51,8 @@ export default function MarketplaceRoutePage() {
   if (route === '/profile') return <ProfilePage user={user} updateUser={updateUser} />;
   if (route === '/settings') return <SettingsPage />;
   if (route === '/help') return <HelpPage />;
+  if (route === '/privacy') return <PrivacyPage />;
+  if (route === '/store') return <StorePage />;
   if (route === '/rides') return <RideBookingPage />;
   if (/^\/tasks\/[^/]+$/.test(route)) return <TaskDetailPage taskId={route.split('/').pop()!} />;
   return <Empty title="Page not found" detail="Choose a destination from the navigation." />;
@@ -128,23 +130,40 @@ function PostTaskPage() {
 
 function MyTasksPage() {
   const pathname = usePathname();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const kind = pathname.endsWith('/accepted') ? 'accepted' : pathname.endsWith('/posted') ? 'posted' : '';
+  const previewTasks = process.env.NODE_ENV === 'development' ? [
+    { _id: 'preview-my-home-cleaning', title: 'Deep clean a two-bedroom apartment', description: 'Kitchen, bathroom, balcony, and living room need a complete clean before Friday evening.', category: 'Cleaning', location: 'Uttara, Dhaka', deadline: '2026-11-06T18:00:00.000Z', budget: 1800, status: 'Bidding', posterId: user?._id || 'preview-me', poster: user, bidCount: 4, createdAt: '2026-11-03T08:00:00.000Z', updatedAt: '2026-11-03T08:00:00.000Z' },
+    { _id: 'preview-my-phone-sale', title: 'Help photograph items for an online listing', description: 'Three household items need clear photos and short descriptions for a second-hand marketplace.', category: 'Photography & Media', location: 'Mirpur 10, Dhaka', deadline: '2026-11-09T14:00:00.000Z', budget: 700, status: 'Open', posterId: user?._id || 'preview-me', poster: user, bidCount: 2, createdAt: '2026-11-02T10:00:00.000Z', updatedAt: '2026-11-02T10:00:00.000Z' },
+    { _id: 'preview-my-event-decor', title: 'Arrange birthday decorations in Gulshan', description: 'Set up balloons, a backdrop, and a small gift table for a family birthday celebration.', category: 'Event Help', location: 'Gulshan 1, Dhaka', deadline: '2026-11-08T16:00:00.000Z', budget: 1500, status: 'Assigned', posterId: user?._id || 'preview-me', poster: user, bidCount: 3, createdAt: '2026-11-02T08:00:00.000Z', updatedAt: '2026-11-02T08:00:00.000Z' },
+    { _id: 'preview-my-cables', title: 'Organize office cables and workstation setup', description: 'Label cables and arrange four desks neatly before the new office team arrives Monday morning.', category: 'Office Work', location: 'Mohakhali, Dhaka', deadline: '2026-11-10T11:00:00.000Z', budget: 950, status: 'Open', posterId: user?._id || 'preview-me', poster: user, bidCount: 1, createdAt: '2026-11-01T09:00:00.000Z', updatedAt: '2026-11-01T09:00:00.000Z' },
+  ] as Task[] : [];
+  const acceptedPreviewTasks = process.env.NODE_ENV === 'development' ? [
+    { _id: 'preview-accepted-delivery', title: 'Deliver documents from Motijheel to Banani', description: 'Collect the signed office documents and deliver them to the client office before lunch.', category: 'Document Delivery', location: 'Motijheel to Banani, Dhaka', deadline: '2026-11-05T13:00:00.000Z', budget: 450, status: 'In Progress', posterId: 'preview-poster-1', bidCount: 3, workerId: user?._id, createdAt: '2026-11-03T07:00:00.000Z', updatedAt: '2026-11-03T09:00:00.000Z' },
+    { _id: 'preview-accepted-grocery', title: 'Weekly grocery pickup in Uttara', description: 'Purchase the listed groceries and deliver them to a nearby apartment this afternoon.', category: 'Shopping & Errands', location: 'Uttara, Dhaka', deadline: '2026-11-06T17:00:00.000Z', budget: 600, status: 'Assigned', posterId: 'preview-poster-2', bidCount: 2, workerId: user?._id, createdAt: '2026-11-02T12:00:00.000Z', updatedAt: '2026-11-02T15:00:00.000Z' },
+    { _id: 'preview-accepted-furniture', title: 'Assemble a small study desk', description: 'Assemble a flat-pack study desk and place it beside the bedroom window.', category: 'Home Repair', location: 'Savar, Dhaka', deadline: '2026-11-09T15:00:00.000Z', budget: 850, status: 'Assigned', posterId: 'preview-poster-3', bidCount: 4, workerId: user?._id, createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T14:00:00.000Z' },
+  ] as Task[] : [];
 
   useEffect(() => {
     setLoading(true);
     const request = kind
       ? tasksApi.list({ mine: kind })
       : dashboardApi.get().then((res) => ({ data: { tasks: [...res.data.recentPosted, ...res.data.recentAccepted] } }));
-    request.then((res) => setTasks(res.data.tasks))
+    request.then((res) => setTasks(res.data.tasks.length ? res.data.tasks : kind === 'accepted' ? acceptedPreviewTasks : previewTasks))
       .finally(() => setLoading(false));
-  }, [kind]);
+  }, [kind, previewTasks.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const title = kind === 'accepted' ? 'Accepted tasks' : kind === 'posted' ? 'Posted tasks' : 'My tasks';
   return (
     <div className="mx-auto max-w-5xl px-3 py-5">
       <PageHeading title={title} description="Manage work you posted and work assigned to you." />
+      <Link href="/post-task" className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white">{user?.fullName.charAt(0)}</div>
+        <div className="flex h-11 flex-1 items-center rounded-full bg-slate-100 px-5 text-sm text-slate-500">What task needs doing?</div>
+        <span className="hidden rounded-lg bg-orange-600 px-4 py-2 text-xs font-bold text-white sm:block">Post task</span>
+      </Link>
       <div className="mb-5 flex gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1">
         {[['/my-tasks', 'Overview'], ['/my-tasks/posted', 'Posted'], ['/my-tasks/accepted', 'Accepted']].map(([href, label]) => (
           <Link key={href} href={href} className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-bold ${pathname === href ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{label}</Link>
@@ -358,5 +377,70 @@ function HelpPage() {
 }
 
 function RideBookingPage() {
-  return <div className="mx-auto max-w-3xl px-3 py-5"><PageHeading title="Local ride booking" description="Ride booking is not connected to a backend provider yet." /><div className="rounded-2xl border border-orange-200 bg-orange-50 p-6"><Clock3 className="h-7 w-7 text-orange-600" /><h2 className="mt-3 font-extrabold text-slate-950">Provider integration required</h2><p className="mt-2 text-sm leading-6 text-slate-600">TaskAnt has no ride inventory, pricing, booking, driver, or location API. This screen intentionally does not create fake bookings.</p></div></div>;
+  const rides = [
+    { type: 'Car', route: 'Banani to Dhanmondi 27', time: 'Today, 5:30 PM', price: '৳350', requester: 'Nusrat Jahan' },
+    { type: 'Bike', route: 'Mirpur 10 to Farmgate', time: 'Today, 6:15 PM', price: '৳120', requester: 'Mehedi Hasan' },
+    { type: 'Bike', route: 'Uttara to Shahjalal Airport', time: 'Tomorrow, 8:00 AM', price: '৳280', requester: 'Farhana Akter' },
+  ];
+  return (
+    <div className="mx-auto max-w-5xl px-3 py-5">
+      <PageHeading title="Ride Services" description="Plan bike and car travel across TaskAnt." />
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button type="button" className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-left">
+            <CarFront className="h-7 w-7 text-orange-600" /><strong className="mt-3 block text-slate-950">Car</strong><span className="text-sm text-slate-500">Comfortable trips</span>
+          </button>
+          <button type="button" className="rounded-xl border border-slate-200 p-4 text-left hover:border-orange-300">
+            <Clock3 className="h-7 w-7 text-slate-700" /><strong className="mt-3 block text-slate-950">Bike</strong><span className="text-sm text-slate-500">Quick local rides</span>
+          </button>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 px-4 py-3"><span className="text-xs font-bold text-slate-400">PICKUP</span><p className="mt-1 text-sm font-semibold text-slate-800">Choose pickup location</p></div>
+          <div className="rounded-xl border border-slate-200 px-4 py-3"><span className="text-xs font-bold text-slate-400">DESTINATION</span><p className="mt-1 text-sm font-semibold text-slate-800">Choose destination</p></div>
+        </div>
+      </div>
+      {process.env.NODE_ENV === 'development' && <section className="mt-4 space-y-3">{rides.map((ride) => <article key={`${ride.type}-${ride.route}`} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4"><div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50">{ride.type === 'Car' ? <CarFront className="h-5 w-5 text-orange-600" /> : <Clock3 className="h-5 w-5 text-orange-600" />}</div><div className="min-w-0 flex-1"><p className="font-bold text-slate-900">{ride.route}</p><p className="mt-1 text-xs text-slate-500">{ride.type} · {ride.requester} · {ride.time}</p></div><strong className="text-sm text-orange-600">{ride.price}</strong></article>)}</section>}
+    </div>
+  );
+}
+
+function StorePage() {
+  const listings = [
+    { title: 'English Grammar Practice Book', detail: 'Like new, edition 2024', location: 'Dhanmondi, Dhaka', price: '৳450', seller: 'Nusrat Jahan' },
+    { title: 'Wireless Bluetooth Headphones', detail: 'Good battery and sound quality', location: 'Mirpur, Dhaka', price: '৳1,200', seller: 'Mehedi Hasan' },
+    { title: 'Adjustable Desk Lamp', detail: 'Warm light, USB powered', location: 'Pabna Sadar, Pabna', price: '৳650', seller: 'Farhana Akter' },
+  ];
+  return (
+    <div className="mx-auto max-w-5xl px-3 py-5">
+      <PageHeading title="Online Store" description="Buy and sell items through TaskAnt." />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {process.env.NODE_ENV === 'development' && listings.map((item) => (
+          <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex h-32 items-center justify-center rounded-xl bg-slate-100"><PackageSearch className="h-10 w-10 text-slate-400" /></div>
+            <h2 className="mt-4 font-bold text-slate-950">{item.title}</h2>
+            <p className="mt-1 text-sm text-slate-500">{item.detail}</p>
+            <p className="mt-2 text-xs text-slate-500">{item.location}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-600">Seller: {item.seller}</p>
+            <p className="mt-3 font-extrabold text-orange-600">{item.price}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <div className="mx-auto max-w-3xl px-3 py-5">
+      <PageHeading title="Privacy" description="How TaskAnt handles account and service information." />
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <ShieldCheck className="h-8 w-8 text-orange-500" />
+        <div className="mt-5 space-y-5 text-sm leading-7 text-slate-600">
+          <section><h2 className="font-bold text-slate-950">Account information</h2><p>TaskAnt uses your profile details to operate tasks, bids, messages, notifications, and payments.</p></section>
+          <section><h2 className="font-bold text-slate-950">Service integrations</h2><p>Ride and store integrations will request separate permissions when their providers are connected. They do not publish fake activity or data.</p></section>
+          <section><h2 className="font-bold text-slate-950">Account controls</h2><p>You can update profile information from My Profile and manage alert preferences from Settings.</p></section>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -7,9 +7,9 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import type { AxiosError } from 'axios';
 import {
-  Bell, Bookmark, CarFront, CheckSquare, ChevronDown, CircleHelp, CreditCard,
-  Grid2X2, Home, LayoutDashboard, ListTodo, LogOut, Menu, MessageSquare,
-  Search, Settings, Shield, Star, Store, User, X,
+  Bell, Bookmark, BriefcaseBusiness, CarFront, CheckSquare, ChevronDown, CircleHelp, CreditCard,
+  Grid2X2, LayoutDashboard, ListTodo, LogOut, Menu, MessageSquare, Search, Settings,
+  Shield, Store, User, X,
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,17 +17,19 @@ import { notificationsApi } from '../services/api';
 
 const userLinks = [
   { to: '/profile', icon: User, label: 'My Profile' },
-  { to: '/dashboard', icon: LayoutDashboard, label: 'My Tasks' },
-  { to: '/my-tasks/posted', icon: ListTodo, label: 'Posted Tasks' },
+  { to: '/dashboard', icon: BriefcaseBusiness, label: 'Task Worker' },
+  { to: '/my-tasks', icon: LayoutDashboard, label: 'My Tasks' },
   { to: '/my-tasks/accepted', icon: CheckSquare, label: 'Accepted Tasks' },
-  { to: '/tasks', icon: Search, label: 'Browse Tasks' },
+  { to: '/rides', icon: CarFront, label: 'Ride Services' },
+  { to: '/store', icon: Store, label: 'Online Store' },
   { to: '/categories', icon: Grid2X2, label: 'Categories' },
-  { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/saved', icon: Bookmark, label: 'Saved Tasks' },
+  { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/payments', icon: CreditCard, label: 'Payments' },
-  { to: '/reviews', icon: Star, label: 'Reviews' },
+  { to: '/help', icon: CircleHelp, label: 'Support' },
   { to: '/settings', icon: Settings, label: 'Settings' },
-  { to: '/help', icon: CircleHelp, label: 'Help' },
+  { to: '/privacy', icon: Shield, label: 'Privacy' },
 ];
 
 const adminLinks = [
@@ -44,7 +46,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-  const [search, setSearch] = useState('');
   const links = isAdmin ? adminLinks : userLinks;
 
   const handleLogout = async () => {
@@ -67,10 +68,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <nav className="space-y-1">
       {links.map((link) => {
         const Icon = link.icon;
-        const active = pathname === link.to;
+        const active =
+          pathname === link.to ||
+          (link.to === '/my-tasks' && pathname.startsWith('/my-tasks')) ||
+          (link.to === '/dashboard' && pathname === '/dashboard');
         return (
           <Link key={link.to} href={link.to} onClick={() => setSidebarOpen(false)}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${active ? 'bg-orange-50 text-orange-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+            className={`flex items-center gap-3 rounded-md px-2 py-2 text-sm font-semibold transition-colors ${active ? 'text-orange-700' : 'text-slate-600 hover:text-slate-900'}`}>
             <Icon className={`h-5 w-5 ${active ? 'text-orange-600' : 'text-slate-500'}`} />
             {link.label}
             {link.to === '/messages' && <span className="ml-auto h-2 w-2 rounded-full bg-orange-500" />}
@@ -84,8 +88,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#f2f4f7]">
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      <aside className="fixed left-0 top-17 z-40 hidden h-[calc(100vh-68px)] w-65 overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 lg:block">
-        <div className="mb-3 flex items-center gap-3 rounded-xl px-3 py-2.5">
+      <aside className="taskant-sidebar fixed left-0 top-14 z-40 hidden h-[calc(100vh-56px)] w-[220px] overflow-y-auto bg-[#f2f4f7] px-2 py-3 lg:block">
+        <div className="mb-2 flex items-center gap-3 rounded-md px-2 py-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
             {user?.fullName.charAt(0)}
           </div>
@@ -95,46 +99,54 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
         {renderSidebarLinks()}
-        <button onClick={() => void handleLogout()} className="mt-4 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
+        <button onClick={() => void handleLogout()} className="mt-2 flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-semibold text-slate-600 hover:text-red-600">
           <LogOut className="h-5 w-5" /> Log out
         </button>
       </aside>
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-70 bg-white shadow-2xl transition-transform lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`taskant-sidebar fixed inset-y-0 left-0 z-50 w-[280px] overflow-y-auto bg-white shadow-2xl transition-transform lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-17 items-center justify-between border-b px-4"><Link href="/dashboard"><Logo size="sm" /></Link><button className="p-2" onClick={() => setSidebarOpen(false)}><X className="h-5 w-5" /></button></div>
         <div className="overflow-y-auto p-3">{renderSidebarLinks()}</div>
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-17 items-center border-b border-slate-200 bg-white px-3 shadow-sm sm:px-5">
+      <header className="sticky top-0 z-30 grid h-14 grid-cols-[220px_1fr_220px] items-center border-b border-slate-200 bg-white px-2 shadow-[0_1px_2px_rgba(15,23,42,.06)] max-md:grid-cols-[auto_1fr_auto]">
         <button className="mr-1 p-2 lg:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-6 w-6" /></button>
-        <Link href="/dashboard" className="mr-4 hidden sm:block"><Logo size="sm" /></Link>
-        <form className="relative max-w-xl flex-1" onSubmit={(event) => { event.preventDefault(); if (search.trim()) router.push(`/tasks?q=${encodeURIComponent(search.trim())}`); }}>
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search tasks" placeholder="Search tasks, services, or people" className="h-10 w-full rounded-full border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-100" />
-        </form>
+        <Link href="/dashboard" className="hidden sm:block"><Logo size="sm" /></Link>
         {!isAdmin && (
-          <nav className="ml-3 hidden h-full items-stretch md:flex">
+          <nav className="hidden h-full w-full max-w-[620px] grid-cols-5 justify-self-center items-stretch md:grid">
             {[
-              { href: '/dashboard', icon: Home, label: 'Home' },
-              { href: '/messages', icon: MessageSquare, label: 'Messages' },
-              { href: '/notifications', icon: Bell, label: 'Notifications' },
-              { href: '/tasks', icon: Store, label: 'Marketplace' },
-              { href: '/rides', icon: CarFront, label: 'Ride booking' },
+              { href: '/dashboard', icon: BriefcaseBusiness, label: 'Task Worker' },
+              { href: '/my-tasks', icon: LayoutDashboard, label: 'My Tasks' },
+              { href: '/rides', icon: CarFront, label: 'Ride Services' },
+              { href: '/store', icon: Store, label: 'Online Store' },
+              { href: '/categories', icon: Grid2X2, label: 'Categories' },
             ].map((item) => (
-              <Link key={item.href} href={item.href} title={item.label} className={`relative flex min-w-14.5 items-center justify-center border-b-2 px-3 ${pathname === item.href ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}>
+              <Link key={item.href} href={item.href} title={item.label} className={`relative flex items-center justify-center border-b-[3px] px-3 ${pathname === item.href || (item.href === '/my-tasks' && pathname.startsWith('/my-tasks')) ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}>
                 <item.icon className="h-5 w-5" />
-                {item.href === '/notifications' && unread > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />}
               </Link>
             ))}
           </nav>
         )}
-        <Link href="/profile" className="ml-2 flex items-center gap-1 rounded-full border border-slate-200 p-1.5 pl-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{user?.fullName.charAt(0)}</span>
-          <ChevronDown className="hidden h-4 w-4 text-slate-500 sm:block" />
-        </Link>
+        {!isAdmin && (
+          <div className="flex items-center justify-end gap-1">
+            <Link href="/tasks" title="Search" className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"><Search className="h-5 w-5" /></Link>
+            <Link href="/messages" title="Messages" className={`relative flex h-10 w-10 items-center justify-center rounded-full ${pathname === '/messages' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><MessageSquare className="h-5 w-5" /></Link>
+            <Link href="/notifications" title="Notifications" className={`relative flex h-10 w-10 items-center justify-center rounded-full ${pathname === '/notifications' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <Bell className="h-5 w-5" />{unread > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{unread}</span>}
+            </Link>
+            <Link href="/profile" title="Profile" className="ml-1 flex items-center gap-1 rounded-full border border-slate-200 p-1.5 pl-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{user?.fullName.charAt(0)}</span>
+              <ChevronDown className="hidden h-4 w-4 text-slate-500 sm:block" />
+            </Link>
+          </div>
+        )}
       </header>
 
-      <main className="lg:pl-65">{children}</main>
+      <main>
+        {pathname !== '/dashboard' ? (
+          <div className="mx-auto w-full max-w-[560px]">{children}</div>
+        ) : children}
+      </main>
     </div>
   );
 }

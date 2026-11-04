@@ -41,7 +41,7 @@ router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res) => {
     },
     recentPosted: postedTasks.slice(0, 3),
     recentAccepted: acceptedTasks.slice(0, 3),
-    availableTasks: availableTasks.slice(0, 4),
+    availableTasks,
     pendingBids: await Promise.all(pendingBids.slice(0, 5).map(async (bid) => ({
       ...bid,
       task: (await Task.findById(bid.taskId).lean().exec()),
