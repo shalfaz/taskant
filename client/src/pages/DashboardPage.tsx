@@ -126,10 +126,7 @@ export default function DashboardPage() {
     void loadFeed();
   }, [user?._id]);
 
-  const previewTasksForDevelopment =
-    process.env.NODE_ENV === 'development' ? previewTasks : [];
-  const realTaskCount = availableTasks.length;
-  const feedTasks = realTaskCount ? availableTasks : previewTasksForDevelopment;
+  const feedTasks = [...availableTasks, ...previewTasks];
 
   return (
     <div className="mx-auto w-full max-w-140 px-3 py-3 sm:px-0">
