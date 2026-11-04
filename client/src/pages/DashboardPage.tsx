@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BadgeDollarSign, BriefcaseBusiness, Image as ImageIcon } from 'lucide-react';
-import { dashboardApi } from '../services/api';
+import { dashboardApi, tasksApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { LoadingSpinner } from '../components/ui/Card';
 import TaskCard from '../components/TaskCard';
@@ -108,11 +108,23 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    dashboardApi.get()
-      .then((res) => setAvailableTasks(res.data.availableTasks ?? []))
-      .catch(() => setAvailableTasks([]))
-      .finally(() => setLoading(false));
-  }, []);
+    const loadFeed = async () => {
+      try {
+        const response = await dashboardApi.get();
+        setAvailableTasks(response.data.availableTasks ?? []);
+      } catch {
+        try {
+          const response = await tasksApi.featured();
+          setAvailableTasks((response.data.tasks ?? []).filter((task: Task) => task.posterId !== user?._id));
+        } catch {
+          setAvailableTasks([]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadFeed();
+  }, [user?._id]);
 
   const previewTasksForDevelopment =
     process.env.NODE_ENV === 'development' ? previewTasks : [];
