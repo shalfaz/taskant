@@ -22,6 +22,7 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
     setSaved(next.includes(task._id));
   };
   const posterName = task.poster?.fullName || 'TaskAnt member';
+  const isPreview = task._id.startsWith('preview-');
 
   return (
     <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -40,6 +41,7 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
           <h3 className="min-w-0 text-[15px] font-bold leading-5 text-slate-950">{task.title}</h3>
           <span className="shrink-0 text-sm font-extrabold text-orange-600">{formatCurrency(task.budget)}</span>
         </div>
+        {isPreview && <span className="mt-2 inline-flex rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">Demo preview</span>}
         <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-slate-600">{task.description}</p>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600">
           <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-orange-500" />{task.location}</span>
@@ -51,9 +53,13 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
       {showActions && (
         <div className="mx-4 flex items-center border-y border-slate-100 py-2">
           <span className="flex items-center gap-1.5 text-xs text-slate-500"><Users className="h-4 w-4" />{task.bidCount ?? 0} bids</span>
-          <Link href={`/tasks/${task._id}`} className="ml-auto flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-50">
-            View details & apply <ArrowUpRight className="h-4 w-4" />
-          </Link>
+          {isPreview ? (
+            <span className="ml-auto text-xs font-bold text-slate-400">Preview only</span>
+          ) : (
+            <Link href={`/tasks/${task._id}`} className="ml-auto flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-50">
+              View details & apply <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          )}
         </div>
       )}
     </article>
