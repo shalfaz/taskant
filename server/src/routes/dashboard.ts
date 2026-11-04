@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { findRecords } from '../db/records';
-import { Bid, Notification, Payment, Task } from '../models/index';
-import type { IBid, IPayment, ITask, INotification } from '../types/index';
+import { findRecord, findRecords } from '../db/records';
+import { Bid, Notification, Payment, Task, User } from '../models/index';
+import type { IBid, IPayment, ITask, INotification, IUser } from '../types/index';
 import { authenticate } from '../middleware/auth';
 import { asyncHandler } from '../middleware/validate';
 import type { AuthRequest } from '../types/index';
+import { toPublicUser } from '../utils/auth';
 
 const router = Router();
 
@@ -17,8 +18,15 @@ router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res) => {
       findRecords<IBid>(Bid, { bidderId: userId, status: 'Pending' }, { createdAt: -1 }),
       findRecords<INotification>(Notification, { userId, read: false }),
       findRecords<IPayment>(Payment, { $or: [{ payerId: userId }, { payeeId: userId }] }),
-      findRecords<ITask>(Task, { status: { $in: ['Open', 'Bidding'] }, posterId: { $ne: userId } }),
+      findRecords<ITask>(Task, { status: { $in: ['Open', 'Bidding'] }, posterId: { $ne: userId } }, { createdAt: -1 }),
     ]);
+  const publicTasks = await Promise.all(availableTasks.map(async (task) => {
+    const [poster, bidCount] = await Promise.all([
+      findRecord<IUser>(User, task.posterId),
+      Bid.countDocuments({ taskId: task._id, status: 'Pending' }),
+    ]);
+    return { ...task, poster: poster ? toPublicUser(poster) : null, bidCount };
+  }));
   const earnings = payments
     .filter((payment) => payment.payeeId === userId && payment.status === 'Completed')
     .reduce((sum, payment) => sum + payment.amount, 0);
@@ -41,7 +49,7 @@ router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res) => {
     },
     recentPosted: postedTasks.slice(0, 3),
     recentAccepted: acceptedTasks.slice(0, 3),
-    availableTasks,
+    availableTasks: publicTasks,
     pendingBids: await Promise.all(pendingBids.slice(0, 5).map(async (bid) => ({
       ...bid,
       task: (await Task.findById(bid.taskId).lean().exec()),

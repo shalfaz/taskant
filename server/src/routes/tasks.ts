@@ -60,8 +60,13 @@ router.get('/', optionalAuth, asyncHandler(async (req, res) => {
   res.json({ tasks: await Promise.all(tasks.map(enrichTask)), categories: TASK_CATEGORIES });
 }));
 
-router.get('/featured', asyncHandler(async (_req, res) => {
-  const tasks = await findRecords<ITask>(Task, { status: { $in: ['Open', 'Bidding'] } }, { budget: -1 });
+router.get('/featured', optionalAuth, asyncHandler(async (req, res) => {
+  const authUser = (req as AuthRequest).user;
+  const query: Record<string, unknown> = {
+    status: { $in: ['Open', 'Bidding'] },
+    ...(authUser && { posterId: { $ne: authUser.id } }),
+  };
+  const tasks = await findRecords<ITask>(Task, query, { budget: -1 });
   res.json({ tasks: await Promise.all(tasks.slice(0, 6).map(enrichTask)) });
 }));
 
