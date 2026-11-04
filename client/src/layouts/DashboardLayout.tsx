@@ -107,6 +107,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <aside className={`taskant-sidebar fixed inset-y-0 left-0 z-50 w-[280px] overflow-y-auto bg-white shadow-2xl transition-transform lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-17 items-center justify-between border-b px-4"><Link href="/dashboard"><Logo size="sm" /></Link><button className="p-2" onClick={() => setSidebarOpen(false)}><X className="h-5 w-5" /></button></div>
         <div className="overflow-y-auto p-3">{renderSidebarLinks()}</div>
+        {!isAdmin && (
+          <button onClick={() => { setSidebarOpen(false); void handleLogout(); }} className="mx-3 mt-2 flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-semibold text-red-600">
+            <LogOut className="h-5 w-5" /> Log out
+          </button>
+        )}
       </aside>
 
       <header className="sticky top-0 z-30 grid h-14 grid-cols-[220px_1fr_220px] items-center border-b border-slate-200 bg-white px-2 shadow-[0_1px_2px_rgba(15,23,42,.06)] max-md:grid-cols-[auto_1fr_auto]">

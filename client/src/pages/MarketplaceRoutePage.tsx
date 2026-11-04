@@ -104,8 +104,25 @@ function PostTaskPage() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
+    if (!form.title.trim() || !form.description.trim() || !form.location.trim() || !form.deadline || !form.budget) {
+      toast.error('Complete the title, description, location, deadline, and budget fields.');
+      setSaving(false);
+      return;
+    }
+    const budget = Number(form.budget);
+    const deadline = new Date(`${form.deadline}T23:59:59`);
+    if (!Number.isFinite(budget) || budget < 1) {
+      toast.error('Budget must be at least ৳1.');
+      setSaving(false);
+      return;
+    }
+    if (Number.isNaN(deadline.getTime())) {
+      toast.error('Choose a valid deadline.');
+      setSaving(false);
+      return;
+    }
     try {
-      await tasksApi.create({ ...form, budget: Number(form.budget), deadline: new Date(form.deadline).toISOString() });
+      await tasksApi.create({ ...form, budget, deadline: deadline.toISOString() });
       toast.success('Task posted');
       router.push('/my-tasks/posted');
     } catch (error) {
@@ -134,17 +151,17 @@ function MyTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const kind = pathname.endsWith('/accepted') ? 'accepted' : pathname.endsWith('/posted') ? 'posted' : '';
-  const previewTasks = process.env.NODE_ENV === 'development' ? [
+  const previewTasks = [
     { _id: 'preview-my-home-cleaning', title: 'Deep clean a two-bedroom apartment', description: 'Kitchen, bathroom, balcony, and living room need a complete clean before Friday evening.', category: 'Cleaning', location: 'Uttara, Dhaka', deadline: '2026-11-06T18:00:00.000Z', budget: 1800, status: 'Bidding', posterId: user?._id || 'preview-me', poster: user, bidCount: 4, createdAt: '2026-11-03T08:00:00.000Z', updatedAt: '2026-11-03T08:00:00.000Z' },
     { _id: 'preview-my-phone-sale', title: 'Help photograph items for an online listing', description: 'Three household items need clear photos and short descriptions for a second-hand marketplace.', category: 'Photography & Media', location: 'Mirpur 10, Dhaka', deadline: '2026-11-09T14:00:00.000Z', budget: 700, status: 'Open', posterId: user?._id || 'preview-me', poster: user, bidCount: 2, createdAt: '2026-11-02T10:00:00.000Z', updatedAt: '2026-11-02T10:00:00.000Z' },
     { _id: 'preview-my-event-decor', title: 'Arrange birthday decorations in Gulshan', description: 'Set up balloons, a backdrop, and a small gift table for a family birthday celebration.', category: 'Event Help', location: 'Gulshan 1, Dhaka', deadline: '2026-11-08T16:00:00.000Z', budget: 1500, status: 'Assigned', posterId: user?._id || 'preview-me', poster: user, bidCount: 3, createdAt: '2026-11-02T08:00:00.000Z', updatedAt: '2026-11-02T08:00:00.000Z' },
     { _id: 'preview-my-cables', title: 'Organize office cables and workstation setup', description: 'Label cables and arrange four desks neatly before the new office team arrives Monday morning.', category: 'Office Work', location: 'Mohakhali, Dhaka', deadline: '2026-11-10T11:00:00.000Z', budget: 950, status: 'Open', posterId: user?._id || 'preview-me', poster: user, bidCount: 1, createdAt: '2026-11-01T09:00:00.000Z', updatedAt: '2026-11-01T09:00:00.000Z' },
-  ] as Task[] : [];
-  const acceptedPreviewTasks = process.env.NODE_ENV === 'development' ? [
+  ] as Task[];
+  const acceptedPreviewTasks = [
     { _id: 'preview-accepted-delivery', title: 'Deliver documents from Motijheel to Banani', description: 'Collect the signed office documents and deliver them to the client office before lunch.', category: 'Document Delivery', location: 'Motijheel to Banani, Dhaka', deadline: '2026-11-05T13:00:00.000Z', budget: 450, status: 'In Progress', posterId: 'preview-poster-1', bidCount: 3, workerId: user?._id, createdAt: '2026-11-03T07:00:00.000Z', updatedAt: '2026-11-03T09:00:00.000Z' },
     { _id: 'preview-accepted-grocery', title: 'Weekly grocery pickup in Uttara', description: 'Purchase the listed groceries and deliver them to a nearby apartment this afternoon.', category: 'Shopping & Errands', location: 'Uttara, Dhaka', deadline: '2026-11-06T17:00:00.000Z', budget: 600, status: 'Assigned', posterId: 'preview-poster-2', bidCount: 2, workerId: user?._id, createdAt: '2026-11-02T12:00:00.000Z', updatedAt: '2026-11-02T15:00:00.000Z' },
     { _id: 'preview-accepted-furniture', title: 'Assemble a small study desk', description: 'Assemble a flat-pack study desk and place it beside the bedroom window.', category: 'Home Repair', location: 'Savar, Dhaka', deadline: '2026-11-09T15:00:00.000Z', budget: 850, status: 'Assigned', posterId: 'preview-poster-3', bidCount: 4, workerId: user?._id, createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T14:00:00.000Z' },
-  ] as Task[] : [];
+  ] as Task[];
 
   useEffect(() => {
     setLoading(true);
@@ -385,21 +402,14 @@ function RideBookingPage() {
   return (
     <div className="mx-auto max-w-5xl px-3 py-5">
       <PageHeading title="Ride Services" description="Plan bike and car travel across TaskAnt." />
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button type="button" className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-left">
-            <CarFront className="h-7 w-7 text-orange-600" /><strong className="mt-3 block text-slate-950">Car</strong><span className="text-sm text-slate-500">Comfortable trips</span>
-          </button>
-          <button type="button" className="rounded-xl border border-slate-200 p-4 text-left hover:border-orange-300">
-            <Clock3 className="h-7 w-7 text-slate-700" /><strong className="mt-3 block text-slate-950">Bike</strong><span className="text-sm text-slate-500">Quick local rides</span>
-          </button>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 px-4 py-3"><span className="text-xs font-bold text-slate-400">PICKUP</span><p className="mt-1 text-sm font-semibold text-slate-800">Choose pickup location</p></div>
-          <div className="rounded-xl border border-slate-200 px-4 py-3"><span className="text-xs font-bold text-slate-400">DESTINATION</span><p className="mt-1 text-sm font-semibold text-slate-800">Choose destination</p></div>
-        </div>
-      </div>
-      {process.env.NODE_ENV === 'development' && <section className="mt-4 space-y-3">{rides.map((ride) => <article key={`${ride.type}-${ride.route}`} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4"><div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50">{ride.type === 'Car' ? <CarFront className="h-5 w-5 text-orange-600" /> : <Clock3 className="h-5 w-5 text-orange-600" />}</div><div className="min-w-0 flex-1"><p className="font-bold text-slate-900">{ride.route}</p><p className="mt-1 text-xs text-slate-500">{ride.type} · {ride.requester} · {ride.time}</p></div><strong className="text-sm text-orange-600">{ride.price}</strong></article>)}</section>}
+      <section className="space-y-3">{rides.map((ride) => {
+        const [pickup, destination] = ride.route.split(' to ');
+        return <article key={`${ride.type}-${ride.route}`} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-50">{ride.type === 'Car' ? <CarFront className="h-5 w-5 text-orange-600" /> : <Clock3 className="h-5 w-5 text-orange-600" />}</div>
+          <div className="min-w-0 flex-1"><span className="inline-flex rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">Demo preview</span><p className="mt-1 font-bold text-slate-900">{pickup} <span className="text-slate-400">to</span> {destination}</p><p className="mt-1 text-xs text-slate-500">{ride.type} · {ride.time}</p></div>
+          <strong className="shrink-0 text-sm text-orange-600">{ride.price}</strong>
+        </article>;
+      })}</section>
     </div>
   );
 }
@@ -414,9 +424,10 @@ function StorePage() {
     <div className="mx-auto max-w-5xl px-3 py-5">
       <PageHeading title="Online Store" description="Buy and sell items through TaskAnt." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {process.env.NODE_ENV === 'development' && listings.map((item) => (
+        {listings.map((item) => (
           <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex h-32 items-center justify-center rounded-xl bg-slate-100"><PackageSearch className="h-10 w-10 text-slate-400" /></div>
+            <span className="mt-3 inline-flex rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">Demo listing</span>
             <h2 className="mt-4 font-bold text-slate-950">{item.title}</h2>
             <p className="mt-1 text-sm text-slate-500">{item.detail}</p>
             <p className="mt-2 text-xs text-slate-500">{item.location}</p>
