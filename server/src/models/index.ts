@@ -95,6 +95,84 @@ const taskSchema = new Schema<TaskDocument>(
   { timestamps: true }
 );
 
+export interface RideDocument extends Document {
+  pickup: string;
+  destination: string;
+  vehicleType: 'Car' | 'Bike';
+  departureAt: Date;
+  availableSeats: number;
+  fare: number;
+  description?: string;
+  status: 'Open' | 'Cancelled';
+  driverId: mongoose.Types.ObjectId;
+}
+
+const rideSchema = new Schema<RideDocument>(
+  {
+    pickup: { type: String, required: true, trim: true },
+    destination: { type: String, required: true, trim: true },
+    vehicleType: { type: String, enum: ['Car', 'Bike'], required: true },
+    departureAt: { type: Date, required: true },
+    availableSeats: { type: Number, required: true, min: 1, max: 8 },
+    fare: { type: Number, required: true, min: 1 },
+    description: { type: String, maxlength: 500 },
+    status: { type: String, enum: ['Open', 'Cancelled'], default: 'Open' },
+    driverId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: true }
+);
+
+export interface RideRequestDocument extends Document {
+  rideId: mongoose.Types.ObjectId;
+  passengerId: mongoose.Types.ObjectId;
+  status: 'Pending';
+}
+
+const rideRequestSchema = new Schema<RideRequestDocument>(
+  {
+    rideId: { type: Schema.Types.ObjectId, ref: 'Ride', required: true },
+    passengerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    status: { type: String, enum: ['Pending'], default: 'Pending' },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } }
+);
+
+rideRequestSchema.index({ rideId: 1, passengerId: 1 }, { unique: true });
+
+export interface StoreListingDocument extends Document {
+  title: string;
+  description: string;
+  price: number;
+  category: 'Electronics' | 'Fashion' | 'Books' | 'Furniture' | 'Accessories' | 'Home Appliances' | 'Others';
+  condition: 'New' | 'Used';
+  location: string;
+  photos: string[];
+  status: 'Available' | 'Sold';
+  sellerId: mongoose.Types.ObjectId;
+}
+
+const storeListingSchema = new Schema<StoreListingDocument>(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 120 },
+    description: { type: String, required: true, trim: true, maxlength: 2000 },
+    price: { type: Number, required: true, min: 1, max: 10000000 },
+    category: {
+      type: String,
+      enum: ['Electronics', 'Fashion', 'Books', 'Furniture', 'Accessories', 'Home Appliances', 'Others'],
+      required: true,
+    },
+    condition: { type: String, enum: ['New', 'Used'], required: true },
+    location: { type: String, required: true, trim: true, maxlength: 120 },
+    photos: { type: [String], default: [], validate: [(photos: string[]) => photos.length <= 5, 'A listing can include at most five photos.'] },
+    status: { type: String, enum: ['Available', 'Sold'], default: 'Available' },
+    sellerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: true }
+);
+
+storeListingSchema.index({ sellerId: 1, status: 1, createdAt: -1 });
+storeListingSchema.index({ category: 1, status: 1, createdAt: -1 });
+
 export interface BidDocument extends Document {
   taskId: mongoose.Types.ObjectId;
   bidderId: mongoose.Types.ObjectId;
@@ -117,7 +195,8 @@ const bidSchema = new Schema<BidDocument>(
 );
 
 export interface MessageDocument extends Document {
-  taskId: mongoose.Types.ObjectId;
+  taskId?: mongoose.Types.ObjectId;
+  listingId?: mongoose.Types.ObjectId;
   senderId: mongoose.Types.ObjectId;
   receiverId: mongoose.Types.ObjectId;
   content: string;
@@ -127,7 +206,8 @@ export interface MessageDocument extends Document {
 
 const messageSchema = new Schema<MessageDocument>(
   {
-    taskId: { type: Schema.Types.ObjectId, ref: 'Task', required: true },
+    taskId: { type: Schema.Types.ObjectId, ref: 'Task' },
+    listingId: { type: Schema.Types.ObjectId, ref: 'StoreListing' },
     senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     receiverId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     content: { type: String, required: true },
@@ -264,6 +344,15 @@ export const User: Model<UserDocument> =
 export const Task: Model<TaskDocument> =
   (mongoose.models.Task as Model<TaskDocument> | undefined) ??
   mongoose.model<TaskDocument>('Task', taskSchema);
+export const Ride: Model<RideDocument> =
+  (mongoose.models.Ride as Model<RideDocument> | undefined) ??
+  mongoose.model<RideDocument>('Ride', rideSchema);
+export const RideRequest: Model<RideRequestDocument> =
+  (mongoose.models.RideRequest as Model<RideRequestDocument> | undefined) ??
+  mongoose.model<RideRequestDocument>('RideRequest', rideRequestSchema);
+export const StoreListing: Model<StoreListingDocument> =
+  (mongoose.models.StoreListing as Model<StoreListingDocument> | undefined) ??
+  mongoose.model<StoreListingDocument>('StoreListing', storeListingSchema);
 export const Bid: Model<BidDocument> =
   (mongoose.models.Bid as Model<BidDocument> | undefined) ??
   mongoose.model<BidDocument>('Bid', bidSchema);

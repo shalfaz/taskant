@@ -50,6 +50,24 @@ export const tasksApi = {
   confirmCompletion: (id: string) => api.post(`/tasks/${id}/confirm-completion`),
 };
 
+export const ridesApi = {
+  list: () => api.get('/rides'),
+  get: (id: string) => api.get(`/rides/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/rides', data),
+  request: (id: string) => api.post(`/rides/${id}/requests`),
+  myRequests: () => api.get('/rides/my/requests'),
+  requestsForRide: (id: string) => api.get(`/rides/${id}/requests`),
+};
+
+export const storeApi = {
+  list: (params?: Record<string, string>) => api.get('/store', { params }),
+  mine: () => api.get('/store/my'),
+  get: (id: string) => api.get(`/store/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/store', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/store/${id}`, data),
+  remove: (id: string) => api.delete(`/store/${id}`),
+};
+
 export const bidsApi = {
   getByTask: (taskId: string) => api.get(`/bids/task/${taskId}`),
   getMyPending: () => api.get('/bids/my/pending'),
@@ -61,6 +79,10 @@ export const messagesApi = {
   getConversations: () => api.get('/messages/conversations'),
   getByTask: (taskId: string) => api.get(`/messages/task/${taskId}`),
   send: (data: { taskId: string; content: string }) => api.post('/messages', data),
+  getByListing: (listingId: string, otherUserId: string) =>
+    api.get(`/messages/listing/${listingId}/${otherUserId}`),
+  sendStore: (data: { listingId: string; content: string; receiverId?: string }) =>
+    api.post('/messages/store', data),
 };
 
 export const notificationsApi = {
@@ -108,7 +130,7 @@ export const adminApi = {
 };
 
 export const uploadsApi = {
-  upload: async (file: File, purpose: 'profile-photo' | 'task-attachment') => {
+  upload: async (file: File, purpose: 'profile-photo' | 'task-attachment' | 'store-listing') => {
     const data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () =>

@@ -12,7 +12,7 @@ router.post(
   '/',
   authenticate,
   [
-    body('purpose').isIn(['profile-photo', 'task-attachment']),
+    body('purpose').isIn(['profile-photo', 'task-attachment', 'store-listing']),
     body('mimeType').isString(),
     body('data').isString().notEmpty(),
   ],

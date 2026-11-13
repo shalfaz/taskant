@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { config } from '../config/index';
-import { User } from '../models/index';
+import { RideRequest, StoreListing, User } from '../models/index';
 
 const uriPlaceholder = 'PASTE_YOUR_MONGODB_ATLAS_CONNECTION_STRING_HERE';
 type MongoGlobal = typeof globalThis & {
@@ -13,7 +13,11 @@ function getConnectionPromise(): Promise<typeof mongoose> {
     globalWithCache.taskAntMongoConnection = mongoose
       .connect(config.mongoUri, { autoIndex: false })
       .then(async (connection) => {
-        await User.createIndexes();
+        await Promise.all([
+          User.createIndexes(),
+          RideRequest.createIndexes(),
+          StoreListing.createIndexes(),
+        ]);
         return connection;
       })
       .catch((error: unknown) => {

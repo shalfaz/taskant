@@ -7,11 +7,11 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeft,  CalendarDays, CheckCircle2, Clock3, DollarSign,
-  CarFront, MapPin, MessageSquare, PackageSearch, Send, ShieldCheck, Star, Users, WalletCards,
+  ArrowLeft, CalendarDays, CheckCircle2, DollarSign,
+  Bike, CarFront, MapPin, MessageSquare, Send, ShieldCheck, Star, Users, WalletCards,
 } from 'lucide-react';
 import {
-  bidsApi, dashboardApi, messagesApi, notificationsApi, paymentsApi, reviewsApi, tasksApi,
+  bidsApi, dashboardApi, messagesApi, notificationsApi, paymentsApi, reviewsApi, ridesApi, tasksApi,
   usersApi,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,8 +21,9 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Textarea from '../components/ui/Textarea';
 import Button from '../components/ui/Button';
-import { formatCurrency, formatDate, timeAgo } from '../utils/format';
-import { TASK_CATEGORIES, type Bid, type Message, type Task } from '../types';
+import StoreMarketplacePage from './StoreMarketplacePage';
+import { formatCurrency, formatDate, formatDateTime, getInitials, timeAgo } from '../utils/format';
+import { TASK_CATEGORIES, type Bid, type Message, type Ride, type RideRequest, type Task } from '../types';
 
 function PageHeading({ title, description }: { title: string; description?: string }) {
   return <div className="mb-5"><h1 className="text-2xl font-extrabold text-slate-950">{title}</h1>{description && <p className="mt-1 text-sm text-slate-500">{description}</p>}</div>;
@@ -34,6 +35,7 @@ function Empty({ title, detail }: { title: string; detail: string }) {
 
 export default function MarketplaceRoutePage() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, updateUser } = useAuth();
   const route = pathname.replace(/\/+$/, '');
 
@@ -43,7 +45,10 @@ export default function MarketplaceRoutePage() {
   if (route === '/my-tasks/posted' || route === '/my-tasks/accepted') return <MyTasksPage />;
   if (route === '/categories') return <CategoriesPage />;
   if (route === '/saved') return <SavedTasksPage />;
-  if (route === '/messages') return <MessagesPage />;
+  if (route === '/messages') return <MessagesPage
+    listingId={searchParams.get('listing') || undefined}
+    otherUserId={searchParams.get('user') || undefined}
+  />;
   if (/^\/chat\/[^/]+$/.test(route)) return <MessagesPage taskId={route.split('/').pop()} />;
   if (route === '/notifications') return <NotificationsPage />;
   if (route === '/payments') return <PaymentsPage />;
@@ -52,7 +57,7 @@ export default function MarketplaceRoutePage() {
   if (route === '/settings') return <SettingsPage />;
   if (route === '/help') return <HelpPage />;
   if (route === '/privacy') return <PrivacyPage />;
-  if (route === '/store') return <StorePage />;
+  if (route === '/store') return <StoreMarketplacePage />;
   if (route === '/rides') return <RideBookingPage />;
   if (/^\/tasks\/[^/]+$/.test(route)) return <TaskDetailPage taskId={route.split('/').pop()!} />;
   return <Empty title="Page not found" detail="Choose a destination from the navigation." />;
@@ -318,40 +323,117 @@ function PaymentsPage() {
   return <div className="mx-auto max-w-4xl px-3 py-5"><PageHeading title="Payments" description="Demo payments are recorded through the existing TaskAnt API." />{loading ? <LoadingSpinner /> : payments.length ? <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">{payments.map((payment) => <div key={payment._id} className="flex items-center gap-4 border-b border-slate-100 p-4 last:border-0"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50 text-green-600"><WalletCards className="h-5 w-5" /></div><div className="min-w-0 flex-1"><p className="truncate font-bold text-slate-900">{payment.taskTitle || 'Task payment'}</p><p className="text-xs text-slate-500">{payment.method} · {formatDate(payment.createdAt)}</p></div><div className="text-right"><p className="font-extrabold text-slate-900">{formatCurrency(payment.total)}</p><p className="text-xs text-green-600">{payment.status}</p></div></div>)}</div> : <Empty title="No payments yet" detail="Completed task payments will appear here." />}</div>;
 }
 
-function MessagesPage({ taskId }: { taskId?: string }) {
+function MessagesPage({
+  taskId,
+  listingId,
+  otherUserId,
+}: {
+  taskId?: string;
+  listingId?: string;
+  otherUserId?: string;
+}) {
   const { token, user } = useAuth();
   const router = useRouter();
-  const [conversations, setConversations] = useState<Array<{ taskId: string; taskTitle: string; otherUser: { fullName: string } | null; unread: number }>>([]);
+  const [conversations, setConversations] = useState<Array<{
+    type: 'task' | 'listing';
+    taskId?: string;
+    listingId?: string;
+    otherUserId?: string;
+    taskTitle: string;
+    otherUser: { fullName: string } | null;
+    unread: number;
+  }>>([]);
   const [selected, setSelected] = useState(taskId || '');
+  const [selectedListingId, setSelectedListingId] = useState(listingId || '');
+  const [selectedOtherUserId, setSelectedOtherUserId] = useState(otherUserId || '');
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const loadMessages = useCallback(async (id: string) => {
-    const res = await messagesApi.getByTask(id);
+  useEffect(() => {
+    if (listingId && otherUserId) {
+      setSelected('');
+      setSelectedListingId(listingId);
+      setSelectedOtherUserId(otherUserId);
+    } else if (taskId) {
+      setSelected(taskId);
+      setSelectedListingId('');
+      setSelectedOtherUserId('');
+    }
+  }, [listingId, otherUserId, taskId]);
+
+  const loadMessages = useCallback(async (id: string, listing: string, other: string) => {
+    const res = listing
+      ? await messagesApi.getByListing(listing, other)
+      : await messagesApi.getByTask(id);
     setMessages(res.data.messages);
   }, []);
   useEffect(() => {
     messagesApi.getConversations().then((res) => {
       setConversations(res.data.conversations);
-      if (!selected && res.data.conversations[0]) setSelected(res.data.conversations[0].taskId);
+      if (!taskId && !listingId && res.data.conversations[0]) {
+        const first = res.data.conversations[0];
+        if (first.type === 'listing' && first.listingId) {
+          setSelectedListingId(first.listingId);
+          setSelectedOtherUserId(first.otherUserId || '');
+        } else if (first.taskId) {
+          setSelected(first.taskId);
+        }
+      }
+    }).catch(() => {
+      toast.error('Conversations could not be loaded.');
     }).finally(() => setLoading(false));
-  }, [selected]);
-  useEffect(() => { if (selected) void loadMessages(selected); }, [loadMessages, selected]);
+  }, [listingId, taskId]);
+  useEffect(() => {
+    if (selectedListingId && selectedOtherUserId) {
+      void loadMessages('', selectedListingId, selectedOtherUserId).catch(() => toast.error('Messages could not be loaded.'));
+    } else if (selected) {
+      void loadMessages(selected, '', '').catch(() => toast.error('Messages could not be loaded.'));
+    }
+  }, [loadMessages, selected, selectedListingId, selectedOtherUserId]);
 
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!text.trim()) return;
     try {
-      await messagesApi.send({ taskId: selected, content: text.trim() });
+      if (selectedListingId) {
+        await messagesApi.sendStore({
+          listingId: selectedListingId,
+          receiverId: selectedOtherUserId,
+          content: text.trim(),
+        });
+      } else {
+        await messagesApi.send({ taskId: selected, content: text.trim() });
+      }
       setText('');
-      await loadMessages(selected);
+      await loadMessages(selected, selectedListingId, selectedOtherUserId);
     } catch (error) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to send message');
     }
   };
 
-  return <div className="mx-auto max-w-5xl px-3 py-5"><PageHeading title="Messages" description={token ? 'Messages for assigned tasks.' : ''} /><div className="grid min-h-130 overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid-cols-[280px_1fr]">{loading ? <LoadingSpinner /> : <><div className="border-b border-slate-200 md:border-b-0 md:border-r">{conversations.length ? conversations.map((conversation) => <button key={conversation.taskId} onClick={() => { setSelected(conversation.taskId); router.push(`/chat/${conversation.taskId}`); }} className={`w-full border-b border-slate-100 p-4 text-left ${selected === conversation.taskId ? 'bg-orange-50' : 'hover:bg-slate-50'}`}><p className="truncate text-sm font-bold text-slate-900">{conversation.otherUser?.fullName || 'Task participant'}</p><p className="truncate text-xs text-slate-500">{conversation.taskTitle}</p></button>) : <p className="p-5 text-sm text-slate-500">Assigned tasks will create conversations.</p>}</div><div className="flex min-h-105 flex-col">{selected ? <><div className="flex-1 space-y-3 overflow-y-auto p-4">{messages.map((message) =>   <div key={message._id} className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${message.senderId === user?._id ? 'ml-auto bg-orange-600 text-white' : 'bg-slate-100 text-slate-700'}`}><p>{message.content}</p><span className={`mt-1 block text-[10px] ${message.senderId === user?._id ? 'text-orange-100' : 'text-slate-400'}`}>{timeAgo(message.createdAt)}</span></div>)}</div><form onSubmit={send} className="flex gap-2 border-t border-slate-100 p-3"><input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message..." className="h-10 flex-1 rounded-full bg-slate-100 px-4 text-sm outline-none focus:ring-2 focus:ring-orange-200" /><button className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-600 text-white"><Send className="h-4 w-4" /></button></form></> : <div className="flex flex-1 items-center justify-center text-sm text-slate-500">Select a conversation.</div>}</div></>}</div></div>;
+  const hasSelection = Boolean(selected || (selectedListingId && selectedOtherUserId));
+  return <div className="mx-auto max-w-5xl px-3 py-5"><PageHeading title="Messages" description={token ? 'Messages with your TaskAnt community.' : ''} /><div className="grid min-h-130 overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid-cols-[280px_1fr]">{loading ? <LoadingSpinner /> : <><div className="border-b border-slate-200 md:border-b-0 md:border-r">{conversations.length ? conversations.map((conversation) => {
+    const key = conversation.type === 'listing'
+      ? `listing:${conversation.listingId}:${conversation.otherUserId}`
+      : `task:${conversation.taskId}`;
+    const active = conversation.type === 'listing'
+      ? selectedListingId === conversation.listingId && selectedOtherUserId === conversation.otherUserId
+      : selected === conversation.taskId && !selectedListingId;
+    return <button key={key} onClick={() => {
+      if (conversation.type === 'listing' && conversation.listingId) {
+        setSelected('');
+        setSelectedListingId(conversation.listingId);
+        setSelectedOtherUserId(conversation.otherUserId || '');
+        router.push(`/messages?listing=${conversation.listingId}&user=${conversation.otherUserId}`);
+      } else if (conversation.taskId) {
+        setSelectedListingId('');
+        setSelectedOtherUserId('');
+        setSelected(conversation.taskId);
+        router.push(`/chat/${conversation.taskId}`);
+      }
+    }} className={`w-full border-b border-slate-100 p-4 text-left ${active ? 'bg-orange-50' : 'hover:bg-slate-50'}`}><p className="truncate text-sm font-bold text-slate-900">{conversation.otherUser?.fullName || 'Task participant'}</p><p className="truncate text-xs text-slate-500">{conversation.taskTitle}{conversation.type === 'listing' ? ' · Marketplace' : ''}</p></button>;
+  }) : <p className="p-5 text-sm text-slate-500">Your task and marketplace conversations will appear here.</p>}</div><div className="flex min-h-105 flex-col">{hasSelection ? <><div className="flex-1 space-y-3 overflow-y-auto p-4">{messages.map((message) => <div key={message._id} className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${message.senderId === user?._id ? 'ml-auto bg-orange-600 text-white' : 'bg-slate-100 text-slate-700'}`}><p>{message.content}</p><span className={`mt-1 block text-[10px] ${message.senderId === user?._id ? 'text-orange-100' : 'text-slate-400'}`}>{timeAgo(message.createdAt)}</span></div>)}</div><form onSubmit={send} className="flex gap-2 border-t border-slate-100 p-3"><input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message..." className="h-10 flex-1 rounded-full bg-slate-100 px-4 text-sm outline-none focus:ring-2 focus:ring-orange-200" /><button className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-600 text-white"><Send className="h-4 w-4" /></button></form></> : <div className="flex flex-1 items-center justify-center text-sm text-slate-500">Select a conversation.</div>}</div></>}</div></div>;
 }
 
 function ReviewsPage() {
@@ -394,50 +476,303 @@ function HelpPage() {
 }
 
 function RideBookingPage() {
-  const rides = [
-    { type: 'Car', route: 'Banani to Dhanmondi 27', time: 'Today, 5:30 PM', price: '৳350', requester: 'Nusrat Jahan' },
-    { type: 'Bike', route: 'Mirpur 10 to Farmgate', time: 'Today, 6:15 PM', price: '৳120', requester: 'Mehedi Hasan' },
-    { type: 'Bike', route: 'Uttara to Shahjalal Airport', time: 'Tomorrow, 8:00 AM', price: '৳280', requester: 'Farhana Akter' },
-  ];
+  const { user } = useAuth();
+  const [rides, setRides] = useState<Ride[]>([]);
+  const [sampleRides, setSampleRides] = useState<Ride[]>([]);
+  const [requestedRideIds, setRequestedRideIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [requestingRideId, setRequestingRideId] = useState('');
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
+  const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [form, setForm] = useState({
+    pickup: '',
+    destination: '',
+    vehicleType: 'Car',
+    departureAt: '',
+    availableSeats: '3',
+    fare: '',
+    description: '',
+  });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [ridesResponse, requestsResponse] = await Promise.all([
+        ridesApi.list(),
+        ridesApi.myRequests(),
+      ]);
+      setRides(ridesResponse.data.rides);
+      setRequestedRideIds(requestsResponse.data.requests.map((request: RideRequest) => request.rideId));
+    } catch {
+      setError('Available rides could not be loaded. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { setSampleRides(createSampleRides()); }, []);
+
+  const submitRide = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    if (!form.pickup.trim() || !form.destination.trim() || !form.departureAt || !form.fare) {
+      toast.error('Complete the pickup, destination, departure, and fare fields.');
+      setSaving(false);
+      return;
+    }
+    const departureAt = new Date(form.departureAt);
+    const fare = Number(form.fare);
+    const availableSeats = Number(form.availableSeats);
+    if (!Number.isFinite(departureAt.getTime()) || departureAt <= new Date()) {
+      toast.error('Choose a future departure date and time.');
+      setSaving(false);
+      return;
+    }
+    if (!Number.isFinite(fare) || fare < 1 || fare > 100000) {
+      toast.error('Fare must be between ৳1 and ৳100,000.');
+      setSaving(false);
+      return;
+    }
+    if (!Number.isInteger(availableSeats) || availableSeats < 1 || availableSeats > 8) {
+      toast.error('Choose between 1 and 8 available seats.');
+      setSaving(false);
+      return;
+    }
+    try {
+      const response = await ridesApi.create({
+        ...form,
+        pickup: form.pickup.trim(),
+        destination: form.destination.trim(),
+        departureAt: departureAt.toISOString(),
+        availableSeats,
+        fare,
+      });
+      setRides((current) => [...current, response.data.ride].sort(
+        (left: Ride, right: Ride) => new Date(left.departureAt).getTime() - new Date(right.departureAt).getTime()
+      ));
+      setForm({ pickup: '', destination: '', vehicleType: 'Car', departureAt: '', availableSeats: '3', fare: '', description: '' });
+      toast.success('Ride posted');
+    } catch (requestError) {
+      toast.error((requestError as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to post ride');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const requestRide = async (ride: Ride) => {
+    if (ride.isSample) {
+      toast('Sample rides are for display only. Requests are sent to real community drivers.');
+      return;
+    }
+    setRequestingRideId(ride._id);
+    try {
+      await ridesApi.request(ride._id);
+      setRequestedRideIds((current) => [...current, ride._id]);
+      toast.success('Request sent to the driver for confirmation.');
+    } catch (requestError) {
+      toast.error((requestError as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to request this ride');
+    } finally {
+      setRequestingRideId('');
+    }
+  };
+
+  const viewDetails = async (ride: Ride) => {
+    setSelectedRide(ride);
+    setRideRequests([]);
+    if (!ride.isSample && ride.driverId === user?._id) {
+      setRequestsLoading(true);
+      try {
+        const response = await ridesApi.requestsForRide(ride._id);
+        setRideRequests(response.data.requests);
+      } catch {
+        toast.error('Ride requests could not be loaded.');
+      } finally {
+        setRequestsLoading(false);
+      }
+    }
+  };
+
+  const minDeparture = getLocalDateTimeValue(new Date());
+
   return (
-    <div className="mx-auto max-w-5xl px-3 py-5">
-      <PageHeading title="Ride Services" description="Plan bike and car travel across TaskAnt." />
-      <section className="space-y-3">{rides.map((ride) => {
-        const [pickup, destination] = ride.route.split(' to ');
-        return <article key={`${ride.type}-${ride.route}`} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-50">{ride.type === 'Car' ? <CarFront className="h-5 w-5 text-orange-600" /> : <Clock3 className="h-5 w-5 text-orange-600" />}</div>
-          <div className="min-w-0 flex-1"><span className="inline-flex rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">Demo preview</span><p className="mt-1 font-bold text-slate-900">{pickup} <span className="text-slate-400">to</span> {destination}</p><p className="mt-1 text-xs text-slate-500">{ride.type} · {ride.time}</p></div>
-          <strong className="shrink-0 text-sm text-orange-600">{ride.price}</strong>
-        </article>;
-      })}</section>
+    <div className="mx-auto w-full max-w-140 px-3 py-3 sm:px-0">
+      <PageHeading title="Ride Services" description="Share your route or find a seat with a local driver." />
+
+      <form onSubmit={submitRide} className="mb-3 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">{getInitials(user?.fullName || 'You')}</div>
+          <div><h2 className="text-sm font-bold text-slate-950">Post a Ride</h2><p className="text-xs text-slate-500">Share your trip with the TaskAnt community.</p></div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <RideField label="Pickup location" required><input required maxLength={120} value={form.pickup} onChange={(event) => setForm({ ...form, pickup: event.target.value })} placeholder="e.g. Banani, Dhaka" className={rideInputClass} /></RideField>
+          <RideField label="Destination" required><input required maxLength={120} value={form.destination} onChange={(event) => setForm({ ...form, destination: event.target.value })} placeholder="e.g. Dhanmondi 27" className={rideInputClass} /></RideField>
+          <RideField label="Vehicle type" required><select required value={form.vehicleType} onChange={(event) => setForm({ ...form, vehicleType: event.target.value })} className={rideInputClass}><option value="Car">Car</option><option value="Bike">Bike</option></select></RideField>
+          <RideField label="Departure date & time" required><input required type="datetime-local" min={minDeparture} value={form.departureAt} onChange={(event) => setForm({ ...form, departureAt: event.target.value })} className={rideInputClass} /></RideField>
+          <RideField label="Available seats" required><input required type="number" min="1" max="8" value={form.availableSeats} onChange={(event) => setForm({ ...form, availableSeats: event.target.value })} className={rideInputClass} /></RideField>
+          <RideField label="Expected fare (BDT)" required><input required type="number" min="1" max="100000" value={form.fare} onChange={(event) => setForm({ ...form, fare: event.target.value })} placeholder="e.g. 350" className={rideInputClass} /></RideField>
+        </div>
+        <label className="mt-2 block text-xs font-semibold text-slate-600">Description <span className="font-normal text-slate-400">(optional)</span>
+          <textarea maxLength={500} rows={2} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Add any useful trip details..." className={`${rideInputClass} mt-1 resize-y`} />
+        </label>
+        <div className="mt-2 flex justify-end border-t border-slate-100 pt-2">
+          <Button type="submit" size="sm" loading={saving}>Post Ride</Button>
+        </div>
+      </form>
+
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-base font-extrabold text-slate-950">Available rides</h2>
+        <span className="text-xs text-slate-500">{rides.length} {rides.length === 1 ? 'ride' : 'rides'}</span>
+      </div>
+      {loading ? <LoadingSpinner className="min-h-32" /> : error ? (
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-5 text-center shadow-sm">
+          <p className="text-sm font-bold text-slate-800">Could not load rides</p>
+          <p className="mt-1 text-xs text-slate-500">{error}</p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={() => void load()}>Try again</Button>
+        </div>
+      ) : rides.length ? (
+        <div className="space-y-3">{rides.map((ride) => (
+          <RideCard key={ride._id} ride={ride} requested={requestedRideIds.includes(ride._id)}
+            requesting={requestingRideId === ride._id} ownRide={ride.driverId === user?._id}
+            onDetails={() => void viewDetails(ride)} onRequest={() => void requestRide(ride)} />
+        ))}</div>
+      ) : (
+        <div className="rounded-lg border border-slate-200 bg-white px-5 py-7 text-center shadow-sm">
+          <p className="text-sm font-bold text-slate-800">No community rides yet</p>
+          <p className="mt-1 text-xs text-slate-500">Post a ride above and it will appear here.</p>
+        </div>
+      )}
+
+      <section className="mt-5">
+        <h2 className="mb-2 text-sm font-bold text-slate-700">Sample routes</h2>
+        <div className="space-y-3">{sampleRides.map((ride) => (
+          <RideCard key={ride._id} ride={ride} requested={false} requesting={false} ownRide={false}
+            onDetails={() => void viewDetails(ride)} onRequest={() => void requestRide(ride)} />
+        ))}</div>
+      </section>
+
+      {selectedRide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setSelectedRide(null);
+        }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="ride-details-title" className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+            <header className="flex items-start justify-between border-b border-slate-100 p-4">
+              <div><p className="text-xs font-semibold text-orange-600">{selectedRide.vehicleType} ride{selectedRide.isSample ? ' · Sample' : ''}</p>
+                <h2 id="ride-details-title" className="mt-1 text-lg font-extrabold text-slate-950">{selectedRide.pickup} <span className="text-slate-400">→</span> {selectedRide.destination}</h2></div>
+              <button type="button" onClick={() => setSelectedRide(null)} aria-label="Close ride details" className="rounded-full px-2 py-1 text-slate-500 hover:bg-slate-100">×</button>
+            </header>
+            <div className="space-y-3 p-4 text-sm text-slate-600">
+              <p><strong className="text-slate-900">Departure:</strong> {formatDateTime(selectedRide.departureAt)}</p>
+              <p><strong className="text-slate-900">Seats available:</strong> {selectedRide.availableSeats}</p>
+              <p><strong className="text-slate-900">Expected fare:</strong> {formatCurrency(selectedRide.fare)} per seat</p>
+              {selectedRide.description && <p className="whitespace-pre-wrap">{selectedRide.description}</p>}
+              <p><strong className="text-slate-900">Driver:</strong> {selectedRide.driver?.fullName || 'TaskAnt member'}</p>
+              {!selectedRide.isSample && selectedRide.driverId === user?._id && (
+                <div className="border-t border-slate-100 pt-3">
+                  <h3 className="font-bold text-slate-900">Ride requests</h3>
+                  {requestsLoading ? <p className="mt-2 text-xs text-slate-500">Loading requests…</p> : rideRequests.length ? (
+                    <ul className="mt-2 space-y-2">{rideRequests.map((request) => <li key={request._id} className="rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                      <span className="font-bold text-slate-800">{request.passenger?.fullName || 'TaskAnt member'}</span>
+                      <span className="ml-2 text-slate-500">Pending confirmation · {formatDateTime(request.createdAt)}</span>
+                    </li>)}</ul>
+                  ) : <p className="mt-2 text-xs text-slate-500">No ride requests yet.</p>}
+                </div>
+              )}
+              {selectedRide.isSample && <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">This example is separate from community ride posts and cannot receive a request.</p>}
+            </div>
+            <footer className="flex justify-end border-t border-slate-100 p-3">
+              <Button size="sm" variant="outline" onClick={() => setSelectedRide(null)}>Close</Button>
+            </footer>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
 
-function StorePage() {
-  const listings = [
-    { title: 'English Grammar Practice Book', detail: 'Like new, edition 2024', location: 'Dhanmondi, Dhaka', price: '৳450', seller: 'Nusrat Jahan' },
-    { title: 'Wireless Bluetooth Headphones', detail: 'Good battery and sound quality', location: 'Mirpur, Dhaka', price: '৳1,200', seller: 'Mehedi Hasan' },
-    { title: 'Adjustable Desk Lamp', detail: 'Warm light, USB powered', location: 'Pabna Sadar, Pabna', price: '৳650', seller: 'Farhana Akter' },
-  ];
+const rideInputClass = 'h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100';
+
+function RideField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return <label className="block text-xs font-semibold text-slate-600">{label}{required && <span className="text-orange-600"> *</span>}<span className="mt-1 block">{children}</span></label>;
+}
+
+function RideCard({
+  ride, requested, requesting, ownRide, onDetails, onRequest,
+}: {
+  ride: Ride;
+  requested: boolean;
+  requesting: boolean;
+  ownRide: boolean;
+  onDetails: () => void;
+  onRequest: () => void;
+}) {
+  const VehicleIcon = ride.vehicleType === 'Car' ? CarFront : Bike;
+  const driverName = ride.driver?.fullName || 'TaskAnt member';
   return (
-    <div className="mx-auto max-w-5xl px-3 py-5">
-      <PageHeading title="Online Store" description="Buy and sell items through TaskAnt." />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {listings.map((item) => (
-          <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex h-32 items-center justify-center rounded-xl bg-slate-100"><PackageSearch className="h-10 w-10 text-slate-400" /></div>
-            <span className="mt-3 inline-flex rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">Demo listing</span>
-            <h2 className="mt-4 font-bold text-slate-950">{item.title}</h2>
-            <p className="mt-1 text-sm text-slate-500">{item.detail}</p>
-            <p className="mt-2 text-xs text-slate-500">{item.location}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-600">Seller: {item.seller}</p>
-            <p className="mt-3 font-extrabold text-orange-600">{item.price}</p>
-          </article>
-        ))}
+    <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <header className="flex items-center gap-3 px-4 pt-3.5">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${ride.isSample ? 'bg-slate-500' : 'bg-slate-900'}`}>{getInitials(driverName)}</div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-950">{driverName}</p>
+          <p className="truncate text-xs text-slate-500">{ride.isSample ? 'Sample route' : `Posted ${timeAgo(ride.createdAt)}`}</p>
+        </div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 text-orange-600"><VehicleIcon className="h-5 w-5" /></div>
+      </header>
+      <div className="px-4 pb-3 pt-3">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-[15px] font-bold leading-5 text-slate-950">{ride.pickup} <span className="text-slate-400">→</span> {ride.destination}</h3>
+          <strong className="shrink-0 text-sm font-extrabold text-orange-600">{formatCurrency(ride.fare)}</strong>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600">
+          <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-orange-500" />{formatDateTime(ride.departureAt)}</span>
+          <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-slate-400" />{ride.availableSeats} {ride.availableSeats === 1 ? 'seat' : 'seats'}</span>
+          <span className="flex items-center gap-1.5"><VehicleIcon className="h-3.5 w-3.5 text-slate-400" />{ride.vehicleType}</span>
+        </div>
       </div>
-    </div>
+      <div className="mx-4 flex items-center justify-end gap-1 border-t border-slate-100 py-2">
+        <button type="button" onClick={onDetails} className="rounded-md px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100">View Details</button>
+        <Button type="button" size="sm" loading={requesting} disabled={ownRide || requested} onClick={onRequest}>
+          {ownRide ? 'Your ride' : requested ? 'Request sent' : 'Request Ride'}
+        </Button>
+      </div>
+    </article>
   );
+}
+
+function getLocalDateTimeValue(date: Date): string {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function createSampleRides(): Ride[] {
+  const now = new Date();
+  const departure = (days: number, hour: number, minute: number) => {
+    const date = new Date(now);
+    date.setDate(date.getDate() + days);
+    date.setHours(hour, minute, 0, 0);
+    return date.toISOString();
+  };
+  const sampleDriver = (name: string, id: string) => ({
+    _id: id,
+    fullName: name,
+    location: 'Dhaka',
+    role: 'user' as const,
+    verificationStatus: 'Verified' as const,
+    rating: 4.8,
+    reviewCount: 12,
+    completedTasks: 8,
+    postedTasks: 5,
+    createdAt: now.toISOString(),
+  });
+  return [
+    { _id: 'sample-ride-banani-dhanmondi', pickup: 'Banani, Dhaka', destination: 'Dhanmondi 27, Dhaka', vehicleType: 'Car', departureAt: departure(1, 8, 15), availableSeats: 2, fare: 250, description: 'Heading toward Dhanmondi via Karwan Bazar.', status: 'Open', driverId: 'sample-driver-1', driver: sampleDriver('Nusrat Jahan', 'sample-driver-1'), createdAt: now.toISOString(), updatedAt: now.toISOString(), isSample: true },
+    { _id: 'sample-ride-mirpur-farmgate', pickup: 'Mirpur 10, Dhaka', destination: 'Farmgate, Dhaka', vehicleType: 'Bike', departureAt: departure(1, 9, 0), availableSeats: 1, fare: 120, description: 'Morning commute; one passenger seat available.', status: 'Open', driverId: 'sample-driver-2', driver: sampleDriver('Mehedi Hasan', 'sample-driver-2'), createdAt: now.toISOString(), updatedAt: now.toISOString(), isSample: true },
+    { _id: 'sample-ride-uttara-airport', pickup: 'Uttara Sector 7, Dhaka', destination: 'Hazrat Shahjalal International Airport', vehicleType: 'Car', departureAt: departure(2, 6, 30), availableSeats: 3, fare: 300, description: 'Early airport drop. Room for luggage.', status: 'Open', driverId: 'sample-driver-3', driver: sampleDriver('Farhana Akter', 'sample-driver-3'), createdAt: now.toISOString(), updatedAt: now.toISOString(), isSample: true },
+    { _id: 'sample-ride-gulshan-motijheel', pickup: 'Gulshan 2, Dhaka', destination: 'Motijheel, Dhaka', vehicleType: 'Bike', departureAt: departure(2, 17, 45), availableSeats: 1, fare: 180, description: 'Evening ride through the city centre.', status: 'Open', driverId: 'sample-driver-4', driver: sampleDriver('Tanvir Ahmed', 'sample-driver-4'), createdAt: now.toISOString(), updatedAt: now.toISOString(), isSample: true },
+  ];
 }
 
 function PrivacyPage() {
@@ -448,7 +783,7 @@ function PrivacyPage() {
         <ShieldCheck className="h-8 w-8 text-orange-500" />
         <div className="mt-5 space-y-5 text-sm leading-7 text-slate-600">
           <section><h2 className="font-bold text-slate-950">Account information</h2><p>TaskAnt uses your profile details to operate tasks, bids, messages, notifications, and payments.</p></section>
-          <section><h2 className="font-bold text-slate-950">Service integrations</h2><p>Ride and store integrations will request separate permissions when their providers are connected. They do not publish fake activity or data.</p></section>
+          <section><h2 className="font-bold text-slate-950">Service integrations</h2><p>Ride posts and ride requests are stored separately from tasks. Sample routes on Ride Services are display-only and cannot accept requests.</p></section>
           <section><h2 className="font-bold text-slate-950">Account controls</h2><p>You can update profile information from My Profile and manage alert preferences from Settings.</p></section>
         </div>
       </div>

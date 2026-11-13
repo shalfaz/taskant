@@ -1,10 +1,11 @@
 import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
 
-export type UploadPurpose = 'profile-photo' | 'task-attachment';
+export type UploadPurpose = 'profile-photo' | 'task-attachment' | 'store-listing';
 
 const allowedMimeTypes: Record<UploadPurpose, string[]> = {
   'profile-photo': ['image/jpeg', 'image/png', 'image/webp'],
   'task-attachment': ['image/jpeg', 'image/png', 'image/webp'],
+  'store-listing': ['image/jpeg', 'image/png', 'image/webp'],
 };
 
 const maxFileSize = 5 * 1024 * 1024;
@@ -15,7 +16,7 @@ export function getUploadValidationError(
   mimeType: unknown,
   file: Buffer
 ): string | undefined {
-  if (purpose !== 'profile-photo' && purpose !== 'task-attachment') {
+  if (purpose !== 'profile-photo' && purpose !== 'task-attachment' && purpose !== 'store-listing') {
     return 'Unsupported upload purpose.';
   }
   if (typeof mimeType !== 'string' || !allowedMimeTypes[purpose].includes(mimeType)) {
