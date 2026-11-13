@@ -9,6 +9,7 @@ import { authenticate, optionalAuth } from '../middleware/auth';
 import { validate, asyncHandler } from '../middleware/validate';
 import { TASK_CATEGORIES } from '../config/index';
 import type { AuthRequest } from '../types/index';
+import { isOwnedCloudinaryAsset } from '../services/cloudinary';
 
 const router = Router();
 
@@ -89,9 +90,23 @@ router.post(
     body('location').trim().notEmpty(),
     body('deadline').isISO8601(),
     body('budget').isFloat({ min: 1 }),
+    body('attachments').optional().isArray({ max: 5 }),
+    body('attachmentAssets').optional().isArray({ max: 5 }),
   ],
   validate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
+    const attachments = (req.body.attachments || []) as unknown[];
+    const attachmentAssets = (req.body.attachmentAssets || []) as unknown[];
+    if (
+      attachments.length !== attachmentAssets.length ||
+      !attachmentAssets.every((asset) =>
+        isOwnedCloudinaryAsset(asset, req.user!.id, 'task-attachment')
+      ) ||
+      !attachmentAssets.every((asset, index) => (asset as { url: string }).url === attachments[index])
+    ) {
+      res.status(400).json({ message: 'Upload task photos before posting the task.' });
+      return;
+    }
     const task = await insertRecord<ITask>(Task, {
       title: req.body.title,
       description: req.body.description,
@@ -100,7 +115,8 @@ router.post(
       deadline: new Date(req.body.deadline),
       budget: Number(req.body.budget),
       additionalInstructions: req.body.additionalInstructions,
-      attachments: req.body.attachments || [],
+      attachments,
+      attachmentAssets,
       status: 'Open',
       posterId: req.user!.id,
       progressNotes: [],

@@ -6,6 +6,7 @@ import type { IStoreListing, IUser, StoreCategory } from '../types/index';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { asyncHandler, validate } from '../middleware/validate';
 import { toPublicUser } from '../utils/auth';
+import { isOwnedCloudinaryAsset } from '../services/cloudinary';
 import type { AuthRequest } from '../types/index';
 
 const router = Router();
@@ -75,11 +76,23 @@ router.post(
     body('condition').isIn(['New', 'Used']),
     body('location').trim().notEmpty().isLength({ max: 120 }),
     body('photos').isArray({ max: 5 }),
-    body('photos.*').isURL({ protocols: ['https'], require_protocol: true }).bail()
-      .custom((value: string) => new URL(value).hostname === 'res.cloudinary.com'),
+    body('photoAssets').isArray({ max: 5 }),
   ],
   validate,
   asyncHandler(async (req: AuthRequest, res) => {
+    const photos = req.body.photos as unknown[];
+    const photoAssets = req.body.photoAssets as unknown[];
+    if (
+      !photos.length ||
+      photos.length !== photoAssets.length ||
+      !photoAssets.every((asset) =>
+        isOwnedCloudinaryAsset(asset, req.user!.id, 'store-listing')
+      ) ||
+      !photoAssets.every((asset, index) => (asset as { url: string }).url === photos[index])
+    ) {
+      res.status(400).json({ message: 'Upload product photos before posting the listing.' });
+      return;
+    }
     const listing = await insertRecord<IStoreListing>(StoreListing, {
       title: req.body.title,
       description: req.body.description,
@@ -87,7 +100,8 @@ router.post(
       category: req.body.category,
       condition: req.body.condition,
       location: req.body.location,
-      photos: req.body.photos,
+      photos,
+      photoAssets,
       status: 'Available',
       sellerId: req.user!.id,
     });
@@ -115,8 +129,7 @@ router.patch(
     body('condition').optional().isIn(['New', 'Used']),
     body('location').optional().trim().notEmpty().isLength({ max: 120 }),
     body('photos').optional().isArray({ max: 5 }),
-    body('photos.*').optional().isURL({ protocols: ['https'], require_protocol: true }).bail()
-      .custom((value: string) => new URL(value).hostname === 'res.cloudinary.com'),
+    body('photoAssets').optional().isArray({ max: 5 }),
     body('status').optional().isIn(['Available', 'Sold']),
   ],
   validate,
@@ -130,7 +143,32 @@ router.patch(
       res.status(403).json({ message: 'Only the seller can update this listing' });
       return;
     }
-    const allowed = ['title', 'description', 'price', 'category', 'condition', 'location', 'photos', 'status'];
+    if (req.body.photoAssets !== undefined) {
+      const photoAssets = req.body.photoAssets as unknown[];
+      const photos = req.body.photos as unknown;
+      if (
+        !Array.isArray(photos) ||
+        !photoAssets.every((asset) =>
+          isOwnedCloudinaryAsset(asset, req.user!.id, 'store-listing')
+        ) ||
+        !photoAssets.every((asset) => photos.includes((asset as { url: string }).url))
+      ) {
+        res.status(400).json({ message: 'Upload product photos before saving the listing.' });
+        return;
+      }
+      const currentAssetUrls = new Set(
+        (listing.photoAssets || []).map((asset) => asset.url)
+      );
+      if (photos.some((photo) =>
+        typeof photo !== 'string' ||
+        (!photoAssets.some((asset) => (asset as { url: string }).url === photo) &&
+          (!listing.photos.includes(photo) || currentAssetUrls.has(photo)))
+      )) {
+        res.status(400).json({ message: 'Only existing photos or your uploaded product photos can be used.' });
+        return;
+      }
+    }
+    const allowed = ['title', 'description', 'price', 'category', 'condition', 'location', 'photos', 'photoAssets', 'status'];
     const update = Object.fromEntries(
       Object.entries(req.body).filter(([key]) => allowed.includes(key))
     );

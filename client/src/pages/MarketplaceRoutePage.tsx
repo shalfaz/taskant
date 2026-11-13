@@ -3,16 +3,18 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeft, CalendarDays, CheckCircle2, DollarSign,
+  ArrowLeft, CalendarDays, Camera, CheckCircle2, DollarSign, ImagePlus,
   Bike, CarFront, MapPin, MessageSquare, Send, ShieldCheck, Star, Users, WalletCards,
 } from 'lucide-react';
 import {
   bidsApi, dashboardApi, messagesApi, notificationsApi, paymentsApi, reviewsApi, ridesApi, tasksApi,
   usersApi,
+  uploadsApi,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { LoadingSpinner } from '../components/ui/Card';
@@ -23,7 +25,7 @@ import Textarea from '../components/ui/Textarea';
 import Button from '../components/ui/Button';
 import StoreMarketplacePage from './StoreMarketplacePage';
 import { formatCurrency, formatDate, formatDateTime, getInitials, timeAgo } from '../utils/format';
-import { TASK_CATEGORIES, type Bid, type Message, type Ride, type RideRequest, type Task } from '../types';
+import { TASK_CATEGORIES, type Bid, type CloudinaryAsset, type Message, type Ride, type RideRequest, type Task } from '../types';
 
 function PageHeading({ title, description }: { title: string; description?: string }) {
   return <div className="mb-5"><h1 className="text-2xl font-extrabold text-slate-950">{title}</h1>{description && <p className="mt-1 text-sm text-slate-500">{description}</p>}</div>;
@@ -104,8 +106,23 @@ function TasksPage() {
 
 function PostTaskPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ title: '', description: '', category: TASK_CATEGORIES[0], location: '', deadline: '', budget: '', additionalInstructions: '' });
+  const [form, setForm] = useState<{ title: string; description: string; category: string; location: string; deadline: string; budget: string; additionalInstructions: string; attachments: string[]; attachmentAssets: CloudinaryAsset[] }>({ title: '', description: '', category: TASK_CATEGORIES[0], location: '', deadline: '', budget: '', additionalInstructions: '', attachments: [], attachmentAssets: [] });
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [saving, setSaving] = useState(false);
+  const selectPhotos = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const incoming = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (form.attachments.length + photos.length + incoming.length > 5) {
+      toast.error('Add no more than five photos to a task.');
+      return;
+    }
+    if (incoming.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024)) {
+      toast.error('Photos must be JPG, PNG, or WebP files no larger than 4 MB each.');
+      return;
+    }
+    setPhotos((current) => [...current, ...incoming]);
+  };
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
@@ -127,12 +144,25 @@ function PostTaskPage() {
       return;
     }
     try {
-      await tasksApi.create({ ...form, budget, deadline: deadline.toISOString() });
+      const attachmentAssets: CloudinaryAsset[] = [];
+      for (const [index, file] of photos.entries()) {
+        const response = await uploadsApi.upload(file, 'task-attachment', (progress) => {
+          setUploadProgress(Math.round(((index + progress / 100) / photos.length) * 100));
+        });
+        attachmentAssets.push(response.data.asset as CloudinaryAsset);
+      }
+      await tasksApi.create({
+        ...form,
+        attachments: [...form.attachments, ...attachmentAssets.map((asset) => asset.url)],
+        attachmentAssets: [...form.attachmentAssets, ...attachmentAssets],
+        budget,
+        deadline: deadline.toISOString(),
+      });
       toast.success('Task posted');
       router.push('/my-tasks/posted');
     } catch (error) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to post task');
-    } finally { setSaving(false); }
+    } finally { setSaving(false); setUploadProgress(0); }
   };
   return (
     <div className="mx-auto max-w-2xl px-3 py-5">
@@ -144,7 +174,11 @@ function PostTaskPage() {
         <div className="grid gap-4 sm:grid-cols-2"><Select label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} options={TASK_CATEGORIES.map((item) => ({ value: item, label: item }))} /><Input required label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
         <div className="grid gap-4 sm:grid-cols-2"><Input required label="Deadline" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} /><Input required label="Budget (৳)" type="number" min="1" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} /></div>
         <Textarea label="Additional instructions" value={form.additionalInstructions} onChange={(e) => setForm({ ...form, additionalInstructions: e.target.value })} rows={3} />
-        <Button type="submit" loading={saving} className="w-full"><Send className="h-4 w-4" /> Publish task</Button>
+        <div className="space-y-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><ImagePlus className="h-4 w-4" /> Add photos <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" onChange={selectPhotos} /></label>
+          {!!photos.length && <ul className="space-y-1 text-xs text-slate-500">{photos.map((photo, index) => <li key={`${photo.name}-${index}`} className="flex items-center justify-between gap-2"><span className="truncate">{photo.name}</span><button type="button" className="font-bold text-red-600" onClick={() => setPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button></li>)}</ul>}
+        </div>
+        <Button type="submit" loading={saving} className="w-full"><Send className="h-4 w-4" /> {saving ? `Uploading ${uploadProgress}%` : 'Publish task'}</Button>
       </form>
     </div>
   );
@@ -266,7 +300,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
           <div className="flex flex-wrap items-start justify-between gap-3"><div><span className="text-xs font-bold text-orange-600">{task.category}</span><h1 className="mt-1 text-2xl font-extrabold text-slate-950">{task.title}</h1></div><p className="text-2xl font-extrabold text-orange-600">{formatCurrency(task.budget)}</p></div>
           <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-3"><span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-orange-500" />{task.location}</span><span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-orange-500" />{formatDate(task.deadline)}</span><span className="flex items-center gap-2"><Users className="h-4 w-4 text-orange-500" />{task.bidCount ?? bids.length} bids</span></div>
         </div>
-        <div className="p-5"><h2 className="font-bold text-slate-900">Task details</h2><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{task.description}</p>{task.additionalInstructions && <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600"><strong className="text-slate-900">Additional instructions:</strong> {task.additionalInstructions}</p>}</div>
+        <div className="p-5"><h2 className="font-bold text-slate-900">Task details</h2><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{task.description}</p>{!!task.attachments?.length && <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">{task.attachments.map((src) => <Image key={src} src={src} alt={`Photo for ${task.title}`} width={320} height={240} className="h-36 w-full rounded-lg object-cover" unoptimized />)}</div>}{task.additionalInstructions && <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600"><strong className="text-slate-900">Additional instructions:</strong> {task.additionalInstructions}</p>}</div>
       </article>
 
       {isPoster && ['Open', 'Bidding'].includes(task.status) && (
@@ -348,6 +382,9 @@ function MessagesPage({
   const [selectedOtherUserId, setSelectedOtherUserId] = useState(otherUserId || '');
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
+  const [messagePhoto, setMessagePhoto] = useState<CloudinaryAsset | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -394,21 +431,46 @@ function MessagesPage({
 
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!text.trim()) return;
+    if (!text.trim() && !messagePhoto) return;
     try {
       if (selectedListingId) {
         await messagesApi.sendStore({
           listingId: selectedListingId,
           receiverId: selectedOtherUserId,
           content: text.trim(),
+          ...(messagePhoto && { attachment: messagePhoto.url, attachmentPublicId: messagePhoto.publicId }),
         });
       } else {
-        await messagesApi.send({ taskId: selected, content: text.trim() });
+        await messagesApi.send({
+          taskId: selected,
+          content: text.trim(),
+          ...(messagePhoto && { attachment: messagePhoto.url, attachmentPublicId: messagePhoto.publicId }),
+        });
       }
       setText('');
+      setMessagePhoto(null);
       await loadMessages(selected, selectedListingId, selectedOtherUserId);
     } catch (error) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to send message');
+    }
+  };
+  const selectMessagePhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024) {
+      toast.error('Choose a JPG, PNG, or WebP image no larger than 4 MB.');
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const response = await uploadsApi.upload(file, 'chat-attachment', setUploadProgress);
+      setMessagePhoto(response.data.asset as CloudinaryAsset);
+    } catch (error) {
+      toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Image upload failed.');
+    } finally {
+      setUploadingPhoto(false);
+      setUploadProgress(0);
     }
   };
 
@@ -433,7 +495,7 @@ function MessagesPage({
         router.push(`/chat/${conversation.taskId}`);
       }
     }} className={`w-full border-b border-slate-100 p-4 text-left ${active ? 'bg-orange-50' : 'hover:bg-slate-50'}`}><p className="truncate text-sm font-bold text-slate-900">{conversation.otherUser?.fullName || 'Task participant'}</p><p className="truncate text-xs text-slate-500">{conversation.taskTitle}{conversation.type === 'listing' ? ' · Marketplace' : ''}</p></button>;
-  }) : <p className="p-5 text-sm text-slate-500">Your task and marketplace conversations will appear here.</p>}</div><div className="flex min-h-105 flex-col">{hasSelection ? <><div className="flex-1 space-y-3 overflow-y-auto p-4">{messages.map((message) => <div key={message._id} className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${message.senderId === user?._id ? 'ml-auto bg-orange-600 text-white' : 'bg-slate-100 text-slate-700'}`}><p>{message.content}</p><span className={`mt-1 block text-[10px] ${message.senderId === user?._id ? 'text-orange-100' : 'text-slate-400'}`}>{timeAgo(message.createdAt)}</span></div>)}</div><form onSubmit={send} className="flex gap-2 border-t border-slate-100 p-3"><input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message..." className="h-10 flex-1 rounded-full bg-slate-100 px-4 text-sm outline-none focus:ring-2 focus:ring-orange-200" /><button className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-600 text-white"><Send className="h-4 w-4" /></button></form></> : <div className="flex flex-1 items-center justify-center text-sm text-slate-500">Select a conversation.</div>}</div></>}</div></div>;
+  }) : <p className="p-5 text-sm text-slate-500">Your task and marketplace conversations will appear here.</p>}</div><div className="flex min-h-105 flex-col">{hasSelection ? <><div className="flex-1 space-y-3 overflow-y-auto p-4">{messages.map((message) => <div key={message._id} className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${message.senderId === user?._id ? 'ml-auto bg-orange-600 text-white' : 'bg-slate-100 text-slate-700'}`}>{message.attachment && <Image src={message.attachment} alt="Message attachment" width={320} height={240} className="mb-2 max-h-60 w-auto rounded-lg object-contain" unoptimized />}<p>{message.content}</p><span className={`mt-1 block text-[10px] ${message.senderId === user?._id ? 'text-orange-100' : 'text-slate-400'}`}>{timeAgo(message.createdAt)}</span></div>)}</div><form onSubmit={send} className="flex flex-wrap items-center gap-2 border-t border-slate-100 p-3">{messagePhoto && <div className="flex w-full items-center gap-2 text-xs text-slate-500"><Image src={messagePhoto.url} alt="Selected attachment" width={40} height={40} className="h-10 w-10 rounded object-cover" unoptimized />Ready to send <button type="button" onClick={() => setMessagePhoto(null)} className="font-bold text-red-600">Remove</button></div>}<label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-slate-500 hover:bg-slate-100" title={uploadingPhoto ? `Uploading ${uploadProgress}%` : 'Attach image'}><Camera className="h-5 w-5" /><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void selectMessagePhoto(event)} disabled={uploadingPhoto} /></label>{uploadingPhoto && <span className="text-xs text-slate-500">Uploading {uploadProgress}%</span>}<input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message..." className="h-10 min-w-0 flex-1 rounded-full bg-slate-100 px-4 text-sm outline-none focus:ring-2 focus:ring-orange-200" /><button disabled={uploadingPhoto || (!text.trim() && !messagePhoto)} className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-600 text-white disabled:opacity-50"><Send className="h-4 w-4" /></button></form></> : <div className="flex flex-1 items-center justify-center text-sm text-slate-500">Select a conversation.</div>}</div></>}</div></div>;
 }
 
 function ReviewsPage() {
@@ -447,18 +509,43 @@ function ReviewsPage() {
 function ProfilePage({ user, updateUser }: { user: ReturnType<typeof useAuth>['user']; updateUser: ReturnType<typeof useAuth>['updateUser'] }) {
   const [form, setForm] = useState({ fullName: user?.fullName || '', phone: user?.phone || '', location: user?.location || '', bio: user?.bio || '' });
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoAsset, setPhotoAsset] = useState<CloudinaryAsset | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
     try {
-      const res = await usersApi.updateProfile(form);
+      const photoFields = photoAsset
+        ? { profilePhoto: photoAsset.url, profilePhotoPublicId: photoAsset.publicId }
+        : removePhoto ? { profilePhoto: '', profilePhotoPublicId: '' } : {};
+      const res = await usersApi.updateProfile({ ...form, ...photoFields });
       updateUser(res.data.user);
       toast.success('Profile updated');
     } catch (error) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to update profile');
     } finally { setSaving(false); }
   };
-  return <div className="mx-auto max-w-2xl px-3 py-5"><PageHeading title="Profile" description="Your public TaskAnt identity." /><form onSubmit={save} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-4 border-b border-slate-100 pb-5"><div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-950 text-xl font-extrabold text-white">{user?.fullName.charAt(0)}</div><div><p className="font-extrabold text-slate-950">{user?.fullName}</p><p className="text-sm text-slate-500">{user?.location}</p><p className="mt-1 text-xs font-bold text-orange-600">{user?.rating.toFixed(1)} rating · {user?.completedTasks || 0} completed tasks</p></div></div><Input label="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /><div className="grid gap-4 sm:grid-cols-2"><Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /><Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div><Textarea label="Bio" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} /><Button loading={saving} type="submit">Save profile</Button></form></div>;
+  const selectPhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024) {
+      toast.error('Choose a JPG, PNG, or WebP image no larger than 4 MB.');
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const response = await uploadsApi.upload(file, 'profile-photo');
+      setPhotoAsset(response.data.asset as CloudinaryAsset);
+      setRemovePhoto(false);
+      toast.success('Profile photo uploaded');
+    } catch (error) {
+      toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Profile photo upload failed.');
+    } finally { setUploadingPhoto(false); }
+  };
+  const photoUrl = removePhoto ? '' : photoAsset?.url || user?.profilePhoto;
+  return <div className="mx-auto max-w-2xl px-3 py-5"><PageHeading title="Profile" description="Your public TaskAnt identity." /><form onSubmit={save} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-4 border-b border-slate-100 pb-5"><div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-950 text-xl font-extrabold text-white">{photoUrl ? <Image src={photoUrl} alt="Profile photo" fill sizes="64px" className="object-cover" unoptimized /> : user?.fullName.charAt(0)}</div><div><p className="font-extrabold text-slate-950">{user?.fullName}</p><p className="text-sm text-slate-500">{user?.location}</p><p className="mt-1 text-xs font-bold text-orange-600">{user?.rating.toFixed(1)} rating · {user?.completedTasks || 0} completed tasks</p><div className="mt-2 flex gap-3"><label className="cursor-pointer text-xs font-bold text-orange-600">{uploadingPhoto ? 'Uploading…' : 'Change photo'}<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void selectPhoto(event)} disabled={uploadingPhoto} /></label>{photoUrl && <button type="button" className="text-xs font-semibold text-slate-500" onClick={() => { setPhotoAsset(null); setRemovePhoto(true); }}>Remove</button>}</div></div></div><Input label="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /><div className="grid gap-4 sm:grid-cols-2"><Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /><Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div><Textarea label="Bio" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} /><Button loading={saving} type="submit">Save profile</Button></form></div>;
 }
 
 function SettingsPage() {

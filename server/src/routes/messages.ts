@@ -9,6 +9,7 @@ import { authenticate } from '../middleware/auth';
 import { validate, asyncHandler } from '../middleware/validate';
 import { createNotification, emitToTask } from '../services/notifications';
 import type { AuthRequest } from '../types/index';
+import { isOwnedCloudinaryAsset } from '../services/cloudinary';
 
 const router = Router();
 
@@ -143,7 +144,12 @@ router.get('/task/:taskId', authenticate, asyncHandler(async (req: AuthRequest, 
 router.post(
   '/store',
   authenticate,
-  [body('listingId').notEmpty(), body('content').trim().notEmpty().isLength({ max: 2000 })],
+  [
+    body('listingId').notEmpty(),
+    body('content').optional().trim().isLength({ max: 2000 }),
+    body('attachment').optional().isURL({ protocols: ['https'], require_protocol: true }),
+    body('attachmentPublicId').optional().isString().notEmpty(),
+  ],
   validate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const listing = await findRecord<IStoreListing>(StoreListing, String(req.body.listingId));
@@ -161,6 +167,28 @@ router.post(
     }
     if (!receiverId || receiverId === senderId) {
       res.status(400).json({ message: 'You cannot message yourself about a listing' });
+      return;
+    }
+    if (
+      (req.body.attachment && !req.body.attachmentPublicId) ||
+      (req.body.attachmentPublicId && !req.body.attachment)
+    ) {
+      res.status(400).json({ message: 'Upload the message photo before sending it.' });
+      return;
+    }
+    if (!String(req.body.content || '').trim() && !req.body.attachment) {
+      res.status(400).json({ message: 'Write a message or attach an image.' });
+      return;
+    }
+    if (
+      req.body.attachment &&
+      !isOwnedCloudinaryAsset(
+        { url: req.body.attachment, publicId: req.body.attachmentPublicId },
+        senderId,
+        'chat-attachment'
+      )
+    ) {
+      res.status(400).json({ message: 'Message photo must be uploaded to your TaskAnt account.' });
       return;
     }
     if (senderId !== listing.sellerId && listing.status !== 'Available') {
@@ -193,7 +221,9 @@ router.post(
       listingId: listing._id,
       senderId,
       receiverId,
-      content: String(req.body.content).trim(),
+      content: String(req.body.content || '').trim(),
+      attachment: req.body.attachment,
+      attachmentPublicId: req.body.attachmentPublicId,
       read: false,
     });
     const [sender, receiver] = await Promise.all([
@@ -217,10 +247,15 @@ router.post(
 router.post(
   '/',
   authenticate,
-  [body('taskId').notEmpty(), body('content').trim().notEmpty()],
+  [
+    body('taskId').notEmpty(),
+    body('content').optional().trim().isLength({ max: 2000 }),
+    body('attachment').optional().isURL({ protocols: ['https'], require_protocol: true }),
+    body('attachmentPublicId').optional().isString().notEmpty(),
+  ],
   validate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { taskId, content, attachment } = req.body;
+    const { taskId, content, attachment, attachmentPublicId } = req.body;
     const task = await canAccessTask(req.user!.id, String(taskId));
     if (!task) {
       res.status(403).json({ message: 'Access denied' });
@@ -231,12 +266,35 @@ router.post(
       res.status(400).json({ message: 'A worker must be assigned before messaging' });
       return;
     }
+    if (
+      (attachment && !attachmentPublicId) ||
+      (attachmentPublicId && !attachment)
+    ) {
+      res.status(400).json({ message: 'Upload the message photo before sending it.' });
+      return;
+    }
+    if (!String(content || '').trim() && !attachment) {
+      res.status(400).json({ message: 'Write a message or attach an image.' });
+      return;
+    }
+    if (
+      attachment &&
+      !isOwnedCloudinaryAsset(
+        { url: attachment, publicId: attachmentPublicId },
+        req.user!.id,
+        'chat-attachment'
+      )
+    ) {
+      res.status(400).json({ message: 'Message photo must be uploaded to your TaskAnt account.' });
+      return;
+    }
     const message = await insertRecord<IMessage>(Message, {
       taskId: task._id,
       senderId: req.user!.id,
       receiverId,
-      content,
+      content: String(content || '').trim(),
       attachment,
+      attachmentPublicId,
       read: false,
     });
     const sender = await findRecord<IUser>(User, req.user!.id);

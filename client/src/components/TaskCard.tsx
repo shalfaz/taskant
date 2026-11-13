@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowUpRight, Bookmark, Clock, MapPin, MoreHorizontal, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +28,7 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
   return (
     <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <header className="flex items-center gap-3 px-4 pt-3.5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">{posterName.charAt(0)}</div>
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-900 text-sm font-bold text-white">{task.poster?.profilePhoto ? <Image src={task.poster.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized /> : posterName.charAt(0)}</div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1"><p className="truncate text-sm font-bold text-slate-950">{posterName}</p>{task.poster?.verificationStatus === 'Verified' && <VerifiedBadge />}</div>
           <p className="truncate text-xs text-slate-500">{timeAgo(task.createdAt)} · {task.location}</p>
@@ -37,6 +38,7 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
       </header>
 
       <div className="px-4 pb-3 pt-3">
+        {!!task.attachments?.length && <div className="mb-3 flex gap-2 overflow-x-auto">{task.attachments.map((src) => <Image key={src} src={src} alt={`Photo for ${task.title}`} width={180} height={120} className="h-28 w-40 shrink-0 rounded-lg object-cover" unoptimized />)}</div>}
         <div className="flex items-start justify-between gap-3">
           <h3 className="min-w-0 text-[15px] font-bold leading-5 text-slate-950">{task.title}</h3>
           <span className="shrink-0 text-sm font-extrabold text-orange-600">{formatCurrency(task.budget)}</span>
