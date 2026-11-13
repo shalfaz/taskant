@@ -29,6 +29,7 @@ export interface Task {
   budget: number;
   additionalInstructions?: string;
   attachments?: string[];
+  attachmentAssets?: CloudinaryAsset[];
   status: TaskStatus;
   posterId: string;
   workerId?: string;
@@ -39,6 +40,13 @@ export interface Task {
   bidCount?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CloudinaryAsset {
+  url: string;
+  publicId: string;
+  format?: string;
+  bytes?: number;
 }
 
 export interface Ride {
@@ -86,6 +94,7 @@ export interface StoreListing {
   condition: 'New' | 'Used';
   location: string;
   photos: string[];
+  photoAssets?: CloudinaryAsset[];
   status: 'Available' | 'Sold';
   sellerId: string;
   seller?: User | null;
@@ -115,6 +124,7 @@ export interface Message {
   receiverId: string;
   content: string;
   attachment?: string;
+  attachmentPublicId?: string;
   read: boolean;
   sender?: User;
   createdAt: string;

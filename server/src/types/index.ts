@@ -22,6 +22,7 @@ export interface IUser {
   bio?: string;
   skills?: string[];
   profilePhoto?: string;
+  profilePhotoPublicId?: string;
   role: 'user' | 'admin';
   tokenVersion?: number;
   verificationStatus: VerificationStatus;
@@ -44,6 +45,7 @@ export interface ITask {
   budget: number;
   additionalInstructions?: string;
   attachments?: string[];
+  attachmentAssets?: { url: string; publicId: string }[];
   status: TaskStatus;
   posterId: string;
   workerId?: string;
@@ -94,6 +96,7 @@ export interface IStoreListing {
   condition: 'New' | 'Used';
   location: string;
   photos: string[];
+  photoAssets?: { url: string; publicId: string }[];
   status: 'Available' | 'Sold';
   sellerId: string;
   createdAt: Date;
@@ -119,6 +122,7 @@ export interface IMessage {
   receiverId: string;
   content: string;
   attachment?: string;
+  attachmentPublicId?: string;
   read: boolean;
   createdAt: Date;
 }

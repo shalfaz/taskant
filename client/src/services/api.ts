@@ -78,10 +78,10 @@ export const bidsApi = {
 export const messagesApi = {
   getConversations: () => api.get('/messages/conversations'),
   getByTask: (taskId: string) => api.get(`/messages/task/${taskId}`),
-  send: (data: { taskId: string; content: string }) => api.post('/messages', data),
+  send: (data: { taskId: string; content: string; attachment?: string; attachmentPublicId?: string }) => api.post('/messages', data),
   getByListing: (listingId: string, otherUserId: string) =>
     api.get(`/messages/listing/${listingId}/${otherUserId}`),
-  sendStore: (data: { listingId: string; content: string; receiverId?: string }) =>
+  sendStore: (data: { listingId: string; content: string; receiverId?: string; attachment?: string; attachmentPublicId?: string }) =>
     api.post('/messages/store', data),
 };
 
@@ -130,17 +130,19 @@ export const adminApi = {
 };
 
 export const uploadsApi = {
-  upload: async (file: File, purpose: 'profile-photo' | 'task-attachment' | 'store-listing') => {
-    const data = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () =>
-        typeof reader.result === 'string'
-          ? resolve(reader.result)
-          : reject(new Error('Unable to read the selected file.'));
-      reader.onerror = () => reject(new Error('Unable to read the selected file.'));
-      reader.readAsDataURL(file);
+  upload: (
+    file: File,
+    purpose: 'profile-photo' | 'task-attachment' | 'store-listing' | 'chat-attachment',
+    onProgress?: (progress: number) => void
+  ) => {
+    const form = new FormData();
+    form.append('purpose', purpose);
+    form.append('file', file);
+    return api.post('/uploads', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (event) => {
+        if (event.total) onProgress?.(Math.round((event.loaded * 100) / event.total));
+      },
     });
-
-    return api.post('/uploads', { purpose, mimeType: file.type, data });
   },
 };

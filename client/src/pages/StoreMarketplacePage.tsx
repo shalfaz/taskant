@@ -13,7 +13,7 @@ import Button from '../components/ui/Button';
 import { LoadingSpinner } from '../components/ui/Card';
 import { useAuth } from '../contexts/AuthContext';
 import { messagesApi, storeApi, uploadsApi } from '../services/api';
-import type { StoreCategory, StoreListing } from '../types';
+import type { CloudinaryAsset, StoreCategory, StoreListing } from '../types';
 import { formatCurrency, getInitials, timeAgo } from '../utils/format';
 
 const categories: StoreCategory[] = [
@@ -30,6 +30,7 @@ const emptyForm = {
   condition: 'Used' as 'New' | 'Used',
   location: '',
   photos: [] as string[],
+  photoAssets: [] as CloudinaryAsset[],
 };
 
 interface SelectedPhoto {
@@ -187,6 +188,7 @@ export default function StoreMarketplacePage() {
   const [selectedPhotos, setSelectedPhotos] = useState<SelectedPhoto[]>([]);
   const [editing, setEditing] = useState<StoreListing | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [actionId, setActionId] = useState('');
   const [selectedListing, setSelectedListing] = useState<StoreListing | null>(null);
   const [contacting, setContacting] = useState(false);
@@ -256,8 +258,8 @@ export default function StoreMarketplacePage() {
       toast.error('Add no more than five photos to a listing.');
       return;
     }
-    if (incoming.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
-      toast.error('Photos must be JPG, PNG, or WebP files no larger than 5 MB each.');
+    if (incoming.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024)) {
+      toast.error('Photos must be JPG, PNG, or WebP files no larger than 4 MB each.');
       return;
     }
     try {
@@ -296,13 +298,19 @@ export default function StoreMarketplacePage() {
 
     setSaving(true);
     try {
+      const photoProgress = selectedPhotos.map(() => 0);
       const uploaded = await Promise.all(
-        selectedPhotos.map(({ file }) => uploadsApi.upload(file, 'store-listing'))
+        selectedPhotos.map(({ file }, index) => uploadsApi.upload(file, 'store-listing', (progress) => {
+          photoProgress[index] = progress;
+          setUploadProgress(Math.round(photoProgress.reduce((total, item) => total + item, 0) / photoProgress.length));
+        }))
       );
+      const newAssets = uploaded.map((response) => response.data.asset as CloudinaryAsset);
       const photos = [
         ...form.photos,
-        ...uploaded.map((response) => response.data.asset.url as string),
+        ...newAssets.map((asset) => asset.url),
       ];
+      const photoAssets = [...form.photoAssets, ...newAssets];
       const data = {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -311,6 +319,7 @@ export default function StoreMarketplacePage() {
         condition: form.condition,
         location: form.location.trim(),
         photos,
+        photoAssets,
       };
       if (editing) {
         await storeApi.update(editing._id, data);
@@ -326,6 +335,7 @@ export default function StoreMarketplacePage() {
       toast.error((requestError as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to save listing. Please try again.');
     } finally {
       setSaving(false);
+      setUploadProgress(0);
     }
   };
 
@@ -339,6 +349,7 @@ export default function StoreMarketplacePage() {
       condition: listing.condition,
       location: listing.location,
       photos: [...listing.photos],
+      photoAssets: [...(listing.photoAssets || [])],
     });
     setSelectedPhotos([]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -401,7 +412,14 @@ export default function StoreMarketplacePage() {
   };
 
   const removePhoto = (index: number) => {
-    setForm((current) => ({ ...current, photos: current.photos.filter((_, itemIndex) => itemIndex !== index) }));
+    setForm((current) => {
+      const removed = current.photos[index];
+      return {
+        ...current,
+        photos: current.photos.filter((_, itemIndex) => itemIndex !== index),
+        photoAssets: current.photoAssets.filter((asset) => asset.url !== removed),
+      };
+    });
   };
 
   const removeSelectedPhoto = (index: number) => {
@@ -454,7 +472,7 @@ export default function StoreMarketplacePage() {
             </div>
             <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-2">
               {editing && <Button type="button" size="sm" variant="ghost" onClick={resetForm}>Cancel</Button>}
-              <Button type="submit" size="sm" loading={saving}>{editing ? 'Save Changes' : 'Post Listing'}</Button>
+              <Button type="submit" size="sm" loading={saving}>{saving ? `Uploading ${uploadProgress}%` : editing ? 'Save Changes' : 'Post Listing'}</Button>
             </div>
           </>
         ) : (

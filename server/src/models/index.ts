@@ -14,6 +14,7 @@ export interface UserDocument extends Document {
   bio?: string;
   skills?: string[];
   profilePhoto?: string;
+  profilePhotoPublicId?: string;
   role: 'user' | 'admin';
   tokenVersion: number;
   verificationStatus: VerificationStatus;
@@ -34,6 +35,7 @@ const userSchema = new Schema<UserDocument>(
     bio: String,
     skills: [String],
     profilePhoto: String,
+    profilePhotoPublicId: String,
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     tokenVersion: { type: Number, default: 0 },
     verificationStatus: {
@@ -59,6 +61,7 @@ export interface TaskDocument extends Document {
   budget: number;
   additionalInstructions?: string;
   attachments?: string[];
+  attachmentAssets?: { url: string; publicId: string }[];
   status: TaskStatus;
   posterId: mongoose.Types.ObjectId;
   workerId?: mongoose.Types.ObjectId;
@@ -76,6 +79,7 @@ const taskSchema = new Schema<TaskDocument>(
     budget: { type: Number, required: true },
     additionalInstructions: String,
     attachments: [String],
+    attachmentAssets: [{ url: { type: String, required: true }, publicId: { type: String, required: true } }],
     status: {
       type: String,
       enum: ['Open', 'Bidding', 'Assigned', 'In Progress', 'Completed', 'Cancelled'],
@@ -147,6 +151,7 @@ export interface StoreListingDocument extends Document {
   condition: 'New' | 'Used';
   location: string;
   photos: string[];
+  photoAssets?: { url: string; publicId: string }[];
   status: 'Available' | 'Sold';
   sellerId: mongoose.Types.ObjectId;
 }
@@ -164,6 +169,7 @@ const storeListingSchema = new Schema<StoreListingDocument>(
     condition: { type: String, enum: ['New', 'Used'], required: true },
     location: { type: String, required: true, trim: true, maxlength: 120 },
     photos: { type: [String], default: [], validate: [(photos: string[]) => photos.length <= 5, 'A listing can include at most five photos.'] },
+    photoAssets: [{ url: { type: String, required: true }, publicId: { type: String, required: true } }],
     status: { type: String, enum: ['Available', 'Sold'], default: 'Available' },
     sellerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
@@ -201,6 +207,7 @@ export interface MessageDocument extends Document {
   receiverId: mongoose.Types.ObjectId;
   content: string;
   attachment?: string;
+  attachmentPublicId?: string;
   read: boolean;
 }
 
@@ -212,6 +219,7 @@ const messageSchema = new Schema<MessageDocument>(
     receiverId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     content: { type: String, required: true },
     attachment: String,
+    attachmentPublicId: String,
     read: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

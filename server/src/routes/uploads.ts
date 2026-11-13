@@ -1,52 +1,87 @@
 import { Router } from 'express';
+import type { RequestHandler } from 'express';
 import { body } from 'express-validator';
+import multer from 'multer';
 import { authenticate } from '../middleware/auth';
-import { asyncHandler, validate } from '../middleware/validate';
-import { getUploadValidationError, uploadAsset, type UploadPurpose } from '../services/cloudinary';
+import { asyncHandler, logDevelopmentDiagnostic, validate } from '../middleware/validate';
+import {
+  getUploadValidationError,
+  uploadAsset,
+  verifyCloudinaryConnection,
+  type UploadPurpose,
+} from '../services/cloudinary';
 import type { AuthRequest } from '../types/index';
 
 const router = Router();
-const maxEncodedSize = Math.ceil((5 * 1024 * 1024 * 4) / 3) + 256;
+const maxFileSize = 4 * 1024 * 1024;
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: maxFileSize, files: 1, fields: 1, parts: 2 },
+  fileFilter: (_req, file, callback) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.mimetype)) {
+      callback(new multer.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname));
+      return;
+    }
+    callback(null, true);
+  },
+});
+const parseImageUpload: RequestHandler = (req, res, next) => {
+  imageUpload.single('file')(req, res, (error: unknown) => {
+    if (error instanceof multer.MulterError) {
+      const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      const message = error.code === 'LIMIT_FILE_SIZE'
+        ? 'Images must be 4 MB or smaller.'
+        : 'Upload one JPG, PNG, or WebP image at a time.';
+      res.status(status).json({ message });
+      return;
+    }
+    if (error) {
+      next(error);
+      return;
+    }
+    next();
+  });
+};
+
+router.get('/health', authenticate, asyncHandler(async (_req, res) => {
+  try {
+    await verifyCloudinaryConnection();
+    res.json({ status: 'ok', provider: 'Cloudinary' });
+  } catch (error) {
+    logDevelopmentDiagnostic(
+      typeof res.locals.requestId === 'string' ? res.locals.requestId : 'cloudinary-health',
+      'cloudinary.health',
+      error
+    );
+    res.status(503).json({ status: 'error', message: 'Cloudinary is not configured or is unavailable.' });
+  }
+}));
 
 router.post(
   '/',
   authenticate,
+  parseImageUpload,
   [
-    body('purpose').isIn(['profile-photo', 'task-attachment', 'store-listing']),
-    body('mimeType').isString(),
-    body('data').isString().notEmpty(),
+    body('purpose').isIn(['profile-photo', 'task-attachment', 'store-listing', 'chat-attachment']),
   ],
   validate,
   asyncHandler(async (req: AuthRequest, res) => {
-    const data = req.body.data as string;
-    const mimeType = req.body.mimeType as string;
+    const file = req.file;
     const purpose = req.body.purpose as UploadPurpose;
 
-    if (data.length > maxEncodedSize) {
-      res.status(413).json({ message: 'Files must be 5 MB or smaller.' });
+    if (!file) {
+      res.status(400).json({ message: 'Choose an image to upload.' });
       return;
     }
-
-    const dataUri = /^data:([^;,]+);base64,([A-Za-z\d+/]+={0,2})$/.exec(data);
-    const encoded = dataUri ? dataUri[2] : data;
-    if (!/^(?:[A-Za-z\d+/]{4})*(?:[A-Za-z\d+/]{2}==|[A-Za-z\d+/]{3}=)?$/.test(encoded)) {
-      res.status(400).json({ message: 'File data must be valid base64.' });
-      return;
-    }
-    if (dataUri && dataUri[1] !== mimeType) {
-      res.status(400).json({ message: 'File content type does not match the declared type.' });
-      return;
-    }
-
-    const file = Buffer.from(encoded, 'base64');
-    const validationError = getUploadValidationError(purpose, mimeType, file);
+    const validationError = getUploadValidationError(purpose, file.mimetype, file.buffer);
     if (validationError) {
-      res.status(file.length > 5 * 1024 * 1024 ? 413 : 400).json({ message: validationError });
+      res.status(400).json({ message: validationError });
       return;
     }
 
     try {
-      const asset = await uploadAsset(file, purpose);
+      const asset = await uploadAsset(file.buffer, purpose, req.user!.id);
       res.status(201).json({
         asset: {
           url: asset.secure_url,
@@ -55,8 +90,13 @@ router.post(
           bytes: asset.bytes,
         },
       });
-    } catch {
-      res.status(503).json({ message: 'File upload service is unavailable.' });
+    } catch (error) {
+      logDevelopmentDiagnostic(
+        typeof res.locals.requestId === 'string' ? res.locals.requestId : 'cloudinary-upload',
+        'cloudinary.upload',
+        error
+      );
+      res.status(503).json({ message: 'Image upload service is not configured or is temporarily unavailable.' });
     }
   })
 );
