@@ -10,6 +10,8 @@ import { seedOnStartup } from './seed/startup';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import taskRoutes from './routes/tasks';
+import rideRoutes from './routes/rides';
+import storeRoutes from './routes/store';
 import bidRoutes from './routes/bids';
 import messageRoutes from './routes/messages';
 import notificationRoutes from './routes/notifications';
@@ -76,6 +78,8 @@ app.get('/api/health/mongodb', async (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/rides', rideRoutes);
+app.use('/api/store', storeRoutes);
 app.use('/api/bids', bidRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);

@@ -53,6 +53,53 @@ export interface ITask {
   updatedAt: Date;
 }
 
+export interface IRide {
+  _id: string;
+  pickup: string;
+  destination: string;
+  vehicleType: 'Car' | 'Bike';
+  departureAt: Date;
+  availableSeats: number;
+  fare: number;
+  description?: string;
+  status: 'Open' | 'Cancelled';
+  driverId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IRideRequest {
+  _id: string;
+  rideId: string;
+  passengerId: string;
+  status: 'Pending';
+  createdAt: Date;
+}
+
+export type StoreCategory =
+  | 'Electronics'
+  | 'Fashion'
+  | 'Books'
+  | 'Furniture'
+  | 'Accessories'
+  | 'Home Appliances'
+  | 'Others';
+
+export interface IStoreListing {
+  _id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: StoreCategory;
+  condition: 'New' | 'Used';
+  location: string;
+  photos: string[];
+  status: 'Available' | 'Sold';
+  sellerId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface IBid {
   _id: string;
   taskId: string;
@@ -66,7 +113,8 @@ export interface IBid {
 
 export interface IMessage {
   _id: string;
-  taskId: string;
+  taskId?: string;
+  listingId?: string;
   senderId: string;
   receiverId: string;
   content: string;

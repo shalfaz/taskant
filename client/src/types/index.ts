@@ -41,6 +41,59 @@ export interface Task {
   updatedAt: string;
 }
 
+export interface Ride {
+  _id: string;
+  pickup: string;
+  destination: string;
+  vehicleType: 'Car' | 'Bike';
+  departureAt: string;
+  availableSeats: number;
+  fare: number;
+  description?: string;
+  status: 'Open' | 'Cancelled';
+  driverId: string;
+  driver?: User | null;
+  createdAt: string;
+  updatedAt: string;
+  isSample?: boolean;
+}
+
+export interface RideRequest {
+  _id: string;
+  rideId: string;
+  passengerId: string;
+  status: 'Pending';
+  passenger?: User | null;
+  ride?: Ride;
+  createdAt: string;
+}
+
+export type StoreCategory =
+  | 'Electronics'
+  | 'Fashion'
+  | 'Books'
+  | 'Furniture'
+  | 'Accessories'
+  | 'Home Appliances'
+  | 'Others';
+
+export interface StoreListing {
+  _id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: StoreCategory;
+  condition: 'New' | 'Used';
+  location: string;
+  photos: string[];
+  status: 'Available' | 'Sold';
+  sellerId: string;
+  seller?: User | null;
+  createdAt: string;
+  updatedAt: string;
+  isSample?: boolean;
+}
+
 export interface Bid {
   _id: string;
   taskId: string;
@@ -56,7 +109,8 @@ export interface Bid {
 
 export interface Message {
   _id: string;
-  taskId: string;
+  taskId?: string;
+  listingId?: string;
   senderId: string;
   receiverId: string;
   content: string;
@@ -105,7 +159,10 @@ export interface Review {
 }
 
 export interface Conversation {
+  type?: 'task' | 'listing';
   taskId: string;
+  listingId?: string;
+  otherUserId?: string;
   taskTitle: string;
   otherUser: User | null;
   lastMessage?: Message;
