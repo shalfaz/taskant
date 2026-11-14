@@ -70,6 +70,7 @@ export const storeApi = {
 
 export const bidsApi = {
   getByTask: (taskId: string) => api.get(`/bids/task/${taskId}`),
+  getMine: () => api.get('/bids/my'),
   getMyPending: () => api.get('/bids/my/pending'),
   create: (data: Record<string, unknown>) => api.post('/bids', data),
   accept: (id: string) => api.post(`/bids/${id}/accept`),

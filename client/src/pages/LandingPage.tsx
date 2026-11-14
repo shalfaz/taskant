@@ -11,12 +11,13 @@ import type { Task } from '../types';
 import { LoadingSpinner } from '../components/ui/Card';
 
 const categories = [
+  { name: 'Delivery', icon: '📦' },
+  { name: 'Shopping & Errands', icon: '🛒' },
   { name: 'Document & Office Work', icon: '📄' },
-  { name: 'Parcel & Delivery', icon: '📦' },
-  { name: 'Shopping & Purchase', icon: '🛒' },
-  { name: 'Academic Services', icon: '🎓' },
-  { name: 'Local Errands', icon: '🏃' },
-  { name: 'Government Assistance', icon: '🏛️' },
+  { name: 'Home Services', icon: '🏠' },
+  { name: 'Technology', icon: '💻' },
+  { name: 'Education', icon: '🎓' },
+  { name: 'Others', icon: '✨' },
 ];
 
 const steps = [

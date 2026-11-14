@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
@@ -20,17 +21,26 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!email) errs.email = 'Email is required';
+    if (!email.trim()) errs.email = 'Email is required';
     if (!password) errs.password = 'Password is required';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setLoading(true);
     try {
-      const user = await login(email, password);
+      const user = await login(email.trim(), password);
       toast.success('Welcome back!');
       router.push(user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed';
+      const responseMessage = axios.isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message
+        : undefined;
+      const msg =
+        responseMessage ||
+        (axios.isAxiosError(err) && !err.response
+          ? 'Unable to reach the server. Check your connection and try again.'
+          : err instanceof Error
+            ? err.message
+            : 'Login failed');
       toast.error(msg);
     } finally {
       setLoading(false);

@@ -3,14 +3,13 @@ import type { Request } from 'express';
 export type VerificationStatus = 'Unverified' | 'Pending' | 'Verified' | 'Rejected';
 export type TaskStatus = 'Open' | 'Bidding' | 'Assigned' | 'In Progress' | 'Completed' | 'Cancelled';
 export type TaskCategory =
+  | 'Delivery'
+  | 'Shopping & Errands'
   | 'Document & Office Work'
-  | 'Parcel & Delivery'
-  | 'Shopping & Purchase'
-  | 'Academic Services'
-  | 'Local Errands'
-  | 'Government/Institutional Assistance'
-  | 'Personal Assistance'
-  | 'Other';
+  | 'Home Services'
+  | 'Technology'
+  | 'Education'
+  | 'Others';
 
 export interface IUser {
   _id: string;
@@ -41,6 +40,8 @@ export interface ITask {
   description: string;
   category: TaskCategory;
   location: string;
+  pickup?: string;
+  destination?: string;
   deadline: Date;
   budget: number;
   additionalInstructions?: string;

@@ -16,7 +16,7 @@ router.post(
   '/register',
   [
     body('fullName').trim().notEmpty().withMessage('Full name is required'),
-    body('email').isEmail().withMessage('Valid email is required'),
+    body('email').trim().isEmail().withMessage('Valid email is required'),
     body('phone').trim().notEmpty().withMessage('Phone is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('location').trim().notEmpty().withMessage('Location is required'),
@@ -24,7 +24,7 @@ router.post(
   validate,
   asyncHandler(async (req: Request, res: Response) => {
     const { fullName, email, phone, password, location } = req.body;
-    const normalizedEmail = String(email).toLowerCase();
+    const normalizedEmail = String(email).trim().toLowerCase();
     const existing = await User.findOne({ email: normalizedEmail }).lean().exec();
     if (existing) {
       res.status(400).json({ message: 'Email already registered' });
@@ -60,12 +60,12 @@ router.post(
 
 router.post(
   '/login',
-  [body('email').isEmail(), body('password').notEmpty()],
+  [body('email').trim().isEmail(), body('password').notEmpty()],
   validate,
   asyncHandler(async (req: Request, res: Response) => {
     const { email, password } = req.body;
     res.locals.diagnosticStage = 'auth.login.user_lookup';
-    const user = await User.findOne({ email: String(email).toLowerCase() }).lean().exec();
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() }).lean().exec();
     if (!user) {
       res.status(401).json({ message: 'Invalid email or password' });
       return;

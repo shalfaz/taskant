@@ -17,7 +17,7 @@ async function enrichTask(task: ITask) {
   const [poster, worker, bidCount] = await Promise.all([
     findRecord<IUser>(User, task.posterId),
     task.workerId ? findRecord<IUser>(User, task.workerId) : Promise.resolve(null),
-    Bid.countDocuments({ taskId: task._id, status: 'Pending' }),
+    Bid.countDocuments({ taskId: task._id }),
   ]);
   return {
     ...task,
@@ -28,16 +28,19 @@ async function enrichTask(task: ITask) {
 }
 
 router.get('/', optionalAuth, asyncHandler(async (req, res) => {
-  const { search, category, location, minBudget, maxBudget, status, sort = 'newest', mine, accepted, posted } = req.query;
+  const { search, category, location, minBudget, maxBudget, status, sort = 'newest', mine, accepted, posted, available } = req.query;
   const query: Record<string, unknown> = {};
   const authUser = (req as AuthRequest).user;
   if (mine === 'posted' && authUser) query.posterId = authUser.id;
   else if (mine === 'accepted' && authUser) query.workerId = authUser.id;
+  else if (available === 'true') {
+    query.status = { $in: ['Open', 'Bidding'] };
+  }
   else if (posted !== 'true') query.status = { $ne: 'Cancelled' };
   if (search) {
     const escaped = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const match = { $regex: escaped, $options: 'i' };
-    query.$or = [{ title: match }, { description: match }, { location: match }];
+    query.$or = [{ title: match }, { description: match }, { location: match }, { pickup: match }, { destination: match }];
   }
   if (category) query.category = category;
   if (location) {
@@ -88,6 +91,8 @@ router.post(
     body('description').trim().notEmpty(),
     body('category').isIn([...TASK_CATEGORIES]),
     body('location').trim().notEmpty(),
+    body('pickup').optional().trim().notEmpty().isLength({ max: 120 }),
+    body('destination').optional().trim().notEmpty().isLength({ max: 120 }),
     body('deadline').isISO8601(),
     body('budget').isFloat({ min: 1 }),
     body('attachments').optional().isArray({ max: 5 }),
@@ -112,6 +117,8 @@ router.post(
       description: req.body.description,
       category: req.body.category,
       location: req.body.location,
+      pickup: req.body.pickup,
+      destination: req.body.destination,
       deadline: new Date(req.body.deadline),
       budget: Number(req.body.budget),
       additionalInstructions: req.body.additionalInstructions,

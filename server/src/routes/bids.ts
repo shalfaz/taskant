@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Response } from 'express';
 import { body } from 'express-validator';
-import { findRecord, findRecords, insertRecord, updateRecord } from '../db/records';
+import { findRecord, findRecords, insertRecord, toRecord } from '../db/records';
 import { Bid, Task, User } from '../models/index';
 import type { IBid, ITask, IUser } from '../types/index';
 import { toPublicUser } from '../utils/auth';
@@ -39,6 +39,27 @@ router.get('/my/pending', authenticate, asyncHandler(async (req: AuthRequest, re
       task: await findRecord<ITask>(Task, bid.taskId),
     }))),
   });
+}));
+
+router.get('/my', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+  const bids = await findRecords<IBid>(Bid, { bidderId: req.user!.id }, { createdAt: -1 });
+  const applications = await Promise.all(bids.map(async (bid) => {
+    const task = await findRecord<ITask>(Task, bid.taskId);
+    if (!task) return { ...bid, task: null };
+    const [poster, bidCount] = await Promise.all([
+      findRecord<IUser>(User, task.posterId),
+      Bid.countDocuments({ taskId: task._id }),
+    ]);
+    return {
+      ...bid,
+      task: {
+        ...task,
+        poster: poster ? toPublicUser(poster) : null,
+        bidCount,
+      },
+    };
+  }));
+  res.json({ bids: applications });
 }));
 
 router.post(
@@ -110,20 +131,49 @@ router.post('/:id/accept', authenticate, asyncHandler(async (req: AuthRequest, r
     res.status(403).json({ message: 'Only the task poster can accept bids' });
     return;
   }
-  await Bid.findByIdAndUpdate(bid._id, { $set: { status: 'Accepted' } }).exec();
+  if (bid.status !== 'Pending' || !['Open', 'Bidding'].includes(task.status)) {
+    res.status(409).json({ message: 'This task is no longer accepting bids' });
+    return;
+  }
+  const updatedTask = await Task.findOneAndUpdate(
+    {
+      _id: task._id,
+      posterId: req.user!.id,
+      status: { $in: ['Open', 'Bidding'] },
+    },
+    {
+      $set: {
+        status: 'Assigned',
+        workerId: bid.bidderId,
+        acceptedBidId: bid._id,
+      },
+      $push: {
+        progressNotes: {
+          note: 'Worker assigned',
+          status: 'Assigned',
+          createdAt: new Date(),
+        },
+      },
+    },
+    { new: true }
+  ).exec();
+  if (!updatedTask) {
+    res.status(409).json({ message: 'Another bid has already been accepted for this task' });
+    return;
+  }
+  const acceptedBid = await Bid.findOneAndUpdate(
+    { _id: bid._id, taskId: task._id, status: 'Pending' },
+    { $set: { status: 'Accepted' } },
+    { new: true }
+  ).exec();
+  if (!acceptedBid) {
+    res.status(409).json({ message: 'This bid is no longer pending' });
+    return;
+  }
   await Bid.updateMany(
     { taskId: task._id, _id: { $ne: bid._id }, status: 'Pending' },
     { $set: { status: 'Rejected' } }
   ).exec();
-  const updatedTask = await updateRecord<ITask>(Task, task._id, {
-    status: 'Assigned',
-    workerId: bid.bidderId,
-    acceptedBidId: bid._id,
-    progressNotes: [
-      ...(task.progressNotes || []),
-      { note: 'Worker assigned', status: 'Assigned', createdAt: new Date() },
-    ],
-  });
   await Promise.all([
     createNotification({
       userId: bid.bidderId,
@@ -140,7 +190,7 @@ router.post('/:id/accept', authenticate, asyncHandler(async (req: AuthRequest, r
       link: `/tasks/${task._id}`,
     }),
   ]);
-  res.json({ task: updatedTask, bid: await enrichBid(bid) });
+  res.json({ task: updatedTask, bid: await enrichBid(toRecord<IBid>(acceptedBid.toObject())) });
 }));
 
 export default router;

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import axios from 'axios';
 import { authApi } from '../services/api';
 import { disconnectSocket } from '../services/socket';
 import type { User } from '../types';
@@ -84,7 +85,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             setUser(res.data.user);
             localStorage.setItem('taskant_user', JSON.stringify(res.data.user));
-          } catch {
+          } catch (error: unknown) {
+            const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+            if (status === undefined || status >= 500) {
+              console.error('Unable to verify the saved TaskAnt session', {
+                status,
+                code: axios.isAxiosError(error) ? error.code : undefined,
+                message: error instanceof Error ? error.message : 'Unknown error',
+              });
+              return;
+            }
             localStorage.removeItem('taskant_token');
             localStorage.removeItem('taskant_user');
             setToken(null);
@@ -103,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
-    const res = await authApi.login({ email, password });
+    const res = await authApi.login({ email: email.trim(), password });
     if (
       typeof res.data.token !== 'string' ||
       !res.data.token.trim() ||
