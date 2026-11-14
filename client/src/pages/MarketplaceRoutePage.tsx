@@ -8,19 +8,19 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeft, CalendarDays, Camera, CheckCircle2, DollarSign, ImagePlus,
+  ArrowLeft, CalendarDays, Camera, CheckCircle2, DollarSign,
   Bike, CarFront, MapPin, MessageSquare, Send, ShieldCheck, Star, Users, WalletCards,
 } from 'lucide-react';
 import {
-  bidsApi, dashboardApi, messagesApi, notificationsApi, paymentsApi, reviewsApi, ridesApi, tasksApi,
+  bidsApi, messagesApi, notificationsApi, paymentsApi, reviewsApi, ridesApi, tasksApi,
   usersApi,
   uploadsApi,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { LoadingSpinner } from '../components/ui/Card';
+import { LoadingSpinner, VerifiedBadge } from '../components/ui/Card';
 import TaskCard from '../components/TaskCard';
+import TaskComposer from '../components/TaskComposer';
 import Input from '../components/ui/Input';
-import Select from '../components/ui/Select';
 import Textarea from '../components/ui/Textarea';
 import Button from '../components/ui/Button';
 import StoreMarketplacePage from './StoreMarketplacePage';
@@ -44,7 +44,7 @@ export default function MarketplaceRoutePage() {
   if (route === '/tasks' || route === '/marketplace') return <TasksPage />;
   if (route === '/post-task') return <PostTaskPage />;
   if (route === '/my-tasks') return <MyTasksPage />;
-  if (route === '/my-tasks/posted' || route === '/my-tasks/accepted') return <MyTasksPage />;
+  if (['/my-tasks/posted', '/my-tasks/accepted', '/my-tasks/applications', '/my-tasks/completed'].includes(route)) return <MyTasksPage />;
   if (route === '/categories') return <CategoriesPage />;
   if (route === '/saved') return <SavedTasksPage />;
   if (route === '/messages') return <MessagesPage
@@ -105,81 +105,11 @@ function TasksPage() {
 }
 
 function PostTaskPage() {
-  const router = useRouter();
-  const [form, setForm] = useState<{ title: string; description: string; category: string; location: string; deadline: string; budget: string; additionalInstructions: string; attachments: string[]; attachmentAssets: CloudinaryAsset[] }>({ title: '', description: '', category: TASK_CATEGORIES[0], location: '', deadline: '', budget: '', additionalInstructions: '', attachments: [], attachmentAssets: [] });
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const selectPhotos = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const incoming = Array.from(event.target.files || []);
-    event.target.value = '';
-    if (form.attachments.length + photos.length + incoming.length > 5) {
-      toast.error('Add no more than five photos to a task.');
-      return;
-    }
-    if (incoming.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024)) {
-      toast.error('Photos must be JPG, PNG, or WebP files no larger than 4 MB each.');
-      return;
-    }
-    setPhotos((current) => [...current, ...incoming]);
-  };
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setSaving(true);
-    if (!form.title.trim() || !form.description.trim() || !form.location.trim() || !form.deadline || !form.budget) {
-      toast.error('Complete the title, description, location, deadline, and budget fields.');
-      setSaving(false);
-      return;
-    }
-    const budget = Number(form.budget);
-    const deadline = new Date(`${form.deadline}T23:59:59`);
-    if (!Number.isFinite(budget) || budget < 1) {
-      toast.error('Budget must be at least ৳1.');
-      setSaving(false);
-      return;
-    }
-    if (Number.isNaN(deadline.getTime())) {
-      toast.error('Choose a valid deadline.');
-      setSaving(false);
-      return;
-    }
-    try {
-      const attachmentAssets: CloudinaryAsset[] = [];
-      for (const [index, file] of photos.entries()) {
-        const response = await uploadsApi.upload(file, 'task-attachment', (progress) => {
-          setUploadProgress(Math.round(((index + progress / 100) / photos.length) * 100));
-        });
-        attachmentAssets.push(response.data.asset as CloudinaryAsset);
-      }
-      await tasksApi.create({
-        ...form,
-        attachments: [...form.attachments, ...attachmentAssets.map((asset) => asset.url)],
-        attachmentAssets: [...form.attachmentAssets, ...attachmentAssets],
-        budget,
-        deadline: deadline.toISOString(),
-      });
-      toast.success('Task posted');
-      router.push('/my-tasks/posted');
-    } catch (error) {
-      toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to post task');
-    } finally { setSaving(false); setUploadProgress(0); }
-  };
   return (
     <div className="mx-auto max-w-2xl px-3 py-5">
       <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm font-bold text-slate-500"><ArrowLeft className="h-4 w-4" /> Home</Link>
       <PageHeading title="Post a task" description="Tell local taskers what needs to be done." />
-      <form onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <Input required label="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Pick up groceries" />
-        <Textarea required label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} />
-        <div className="grid gap-4 sm:grid-cols-2"><Select label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} options={TASK_CATEGORIES.map((item) => ({ value: item, label: item }))} /><Input required label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
-        <div className="grid gap-4 sm:grid-cols-2"><Input required label="Deadline" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} /><Input required label="Budget (৳)" type="number" min="1" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} /></div>
-        <Textarea label="Additional instructions" value={form.additionalInstructions} onChange={(e) => setForm({ ...form, additionalInstructions: e.target.value })} rows={3} />
-        <div className="space-y-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><ImagePlus className="h-4 w-4" /> Add photos <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" onChange={selectPhotos} /></label>
-          {!!photos.length && <ul className="space-y-1 text-xs text-slate-500">{photos.map((photo, index) => <li key={`${photo.name}-${index}`} className="flex items-center justify-between gap-2"><span className="truncate">{photo.name}</span><button type="button" className="font-bold text-red-600" onClick={() => setPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button></li>)}</ul>}
-        </div>
-        <Button type="submit" loading={saving} className="w-full"><Send className="h-4 w-4" /> {saving ? `Uploading ${uploadProgress}%` : 'Publish task'}</Button>
-      </form>
+      <TaskComposer />
     </div>
   );
 }
@@ -187,46 +117,232 @@ function PostTaskPage() {
 function MyTasksPage() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [postedTasks, setPostedTasks] = useState<Task[]>([]);
+  const [acceptedTasks, setAcceptedTasks] = useState<Task[]>([]);
+  const [applications, setApplications] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
-  const kind = pathname.endsWith('/accepted') ? 'accepted' : pathname.endsWith('/posted') ? 'posted' : '';
-  const previewTasks = [
-    { _id: 'preview-my-home-cleaning', title: 'Deep clean a two-bedroom apartment', description: 'Kitchen, bathroom, balcony, and living room need a complete clean before Friday evening.', category: 'Cleaning', location: 'Uttara, Dhaka', deadline: '2026-11-06T18:00:00.000Z', budget: 1800, status: 'Bidding', posterId: user?._id || 'preview-me', poster: user, bidCount: 4, createdAt: '2026-11-03T08:00:00.000Z', updatedAt: '2026-11-03T08:00:00.000Z' },
-    { _id: 'preview-my-phone-sale', title: 'Help photograph items for an online listing', description: 'Three household items need clear photos and short descriptions for a second-hand marketplace.', category: 'Photography & Media', location: 'Mirpur 10, Dhaka', deadline: '2026-11-09T14:00:00.000Z', budget: 700, status: 'Open', posterId: user?._id || 'preview-me', poster: user, bidCount: 2, createdAt: '2026-11-02T10:00:00.000Z', updatedAt: '2026-11-02T10:00:00.000Z' },
-    { _id: 'preview-my-event-decor', title: 'Arrange birthday decorations in Gulshan', description: 'Set up balloons, a backdrop, and a small gift table for a family birthday celebration.', category: 'Event Help', location: 'Gulshan 1, Dhaka', deadline: '2026-11-08T16:00:00.000Z', budget: 1500, status: 'Assigned', posterId: user?._id || 'preview-me', poster: user, bidCount: 3, createdAt: '2026-11-02T08:00:00.000Z', updatedAt: '2026-11-02T08:00:00.000Z' },
-    { _id: 'preview-my-cables', title: 'Organize office cables and workstation setup', description: 'Label cables and arrange four desks neatly before the new office team arrives Monday morning.', category: 'Office Work', location: 'Mohakhali, Dhaka', deadline: '2026-11-10T11:00:00.000Z', budget: 950, status: 'Open', posterId: user?._id || 'preview-me', poster: user, bidCount: 1, createdAt: '2026-11-01T09:00:00.000Z', updatedAt: '2026-11-01T09:00:00.000Z' },
-  ] as Task[];
-  const acceptedPreviewTasks = [
-    { _id: 'preview-accepted-delivery', title: 'Deliver documents from Motijheel to Banani', description: 'Collect the signed office documents and deliver them to the client office before lunch.', category: 'Document Delivery', location: 'Motijheel to Banani, Dhaka', deadline: '2026-11-05T13:00:00.000Z', budget: 450, status: 'In Progress', posterId: 'preview-poster-1', bidCount: 3, workerId: user?._id, createdAt: '2026-11-03T07:00:00.000Z', updatedAt: '2026-11-03T09:00:00.000Z' },
-    { _id: 'preview-accepted-grocery', title: 'Weekly grocery pickup in Uttara', description: 'Purchase the listed groceries and deliver them to a nearby apartment this afternoon.', category: 'Shopping & Errands', location: 'Uttara, Dhaka', deadline: '2026-11-06T17:00:00.000Z', budget: 600, status: 'Assigned', posterId: 'preview-poster-2', bidCount: 2, workerId: user?._id, createdAt: '2026-11-02T12:00:00.000Z', updatedAt: '2026-11-02T15:00:00.000Z' },
-    { _id: 'preview-accepted-furniture', title: 'Assemble a small study desk', description: 'Assemble a flat-pack study desk and place it beside the bedroom window.', category: 'Home Repair', location: 'Savar, Dhaka', deadline: '2026-11-09T15:00:00.000Z', budget: 850, status: 'Assigned', posterId: 'preview-poster-3', bidCount: 4, workerId: user?._id, createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T14:00:00.000Z' },
-  ] as Task[];
+  const [loadError, setLoadError] = useState('');
+  const tab = pathname.endsWith('/applications')
+    ? 'applications'
+    : pathname.endsWith('/accepted')
+      ? 'accepted'
+      : pathname.endsWith('/completed')
+        ? 'completed'
+        : 'posted';
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const request = kind
-      ? tasksApi.list({ mine: kind })
-      : dashboardApi.get().then((res) => ({ data: { tasks: [...res.data.recentPosted, ...res.data.recentAccepted] } }));
-    request.then((res) => setTasks(res.data.tasks.length ? res.data.tasks : kind === 'accepted' ? acceptedPreviewTasks : previewTasks))
-      .finally(() => setLoading(false));
-  }, [kind, previewTasks.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    setLoadError('');
+    try {
+      const [posted, accepted, mine] = await Promise.all([
+        tasksApi.list({ mine: 'posted' }),
+        tasksApi.list({ mine: 'accepted' }),
+        bidsApi.getMine(),
+      ]);
+      setPostedTasks(posted.data.tasks);
+      setAcceptedTasks(accepted.data.tasks);
+      setApplications(mine.data.bids);
+    } catch {
+      setLoadError('Your task dashboard could not be loaded. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const title = kind === 'accepted' ? 'Accepted tasks' : kind === 'posted' ? 'Posted tasks' : 'My tasks';
+  useEffect(() => { void load(); }, [load]);
+
+  const allUserTasks = Array.from(
+    new Map([...postedTasks, ...acceptedTasks].map((task) => [task._id, task])).values()
+  );
+  const inProgressCount = allUserTasks.filter((task) => task.status === 'In Progress').length;
+  const completedTasks = allUserTasks.filter((task) => task.status === 'Completed');
+  const activeAcceptedTasks = acceptedTasks.filter((task) => ['Assigned', 'In Progress'].includes(task.status));
+  const applicationTasks = applications.filter((bid): bid is Bid & { task: Task } => !!bid.task);
+  const title = tab === 'applications'
+    ? 'My Applications'
+    : tab === 'accepted'
+      ? 'Accepted Tasks'
+      : tab === 'completed'
+        ? 'Completed Tasks'
+        : 'My Posted Tasks';
+
   return (
-    <div className="mx-auto max-w-5xl px-3 py-5">
-      <PageHeading title={title} description="Manage work you posted and work assigned to you." />
-      <Link href="/post-task" className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white">{user?.fullName.charAt(0)}</div>
-        <div className="flex h-11 flex-1 items-center rounded-full bg-slate-100 px-5 text-sm text-slate-500">What task needs doing?</div>
-        <span className="hidden rounded-lg bg-orange-600 px-4 py-2 text-xs font-bold text-white sm:block">Post task</span>
-      </Link>
-      <div className="mb-5 flex gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1">
-        {[['/my-tasks', 'Overview'], ['/my-tasks/posted', 'Posted'], ['/my-tasks/accepted', 'Accepted']].map(([href, label]) => (
-          <Link key={href} href={href} className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-bold ${pathname === href ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{label}</Link>
+    <div className="w-full px-3 py-5">
+      <PageHeading title={title} description="A clear overview of tasks you posted, applied for, and are completing." />
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        {[
+          { label: 'Posted Tasks', count: postedTasks.length },
+          { label: 'Applied Tasks', count: applications.length },
+          { label: 'In Progress', count: inProgressCount },
+          { label: 'Completed', count: completedTasks.length },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+            <p className="text-[11px] font-semibold text-slate-500">{item.label}</p>
+            <p className="mt-1 text-xl font-extrabold text-slate-950">{loading || loadError ? '—' : item.count}</p>
+          </div>
         ))}
       </div>
-      {loading ? <LoadingSpinner /> : tasks.length ? <div className="grid gap-4 md:grid-cols-2">{tasks.map((task) => <TaskCard key={task._id} task={task} />)}</div> : <Empty title={`No ${kind || ''} tasks yet`} detail="Tasks you post or accept will appear here." />}
+
+      <Link href="/post-task" className="mb-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-orange-200 hover:shadow-md">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white">{user?.fullName.charAt(0)}</div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-bold text-slate-800">Need help with something?</p><p className="text-xs text-slate-500">Create a new task for local helpers.</p></div>
+        <span className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-bold text-white">Post task</span>
+      </Link>
+
+      <nav aria-label="Task management sections" className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1">
+        {[
+          ['/my-tasks', 'My Posted Tasks', ['posted']],
+          ['/my-tasks/applications', 'My Applications', ['applications']],
+          ['/my-tasks/accepted', 'Accepted Tasks', ['accepted']],
+          ['/my-tasks/completed', 'Completed Tasks', ['completed']],
+        ].map(([href, label, activeTabs]) => (
+          <Link key={href as string} href={href as string} aria-current={(activeTabs as string[]).includes(tab) ? 'page' : undefined}
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition ${ (activeTabs as string[]).includes(tab) ? 'bg-orange-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+            {label as string}
+          </Link>
+        ))}
+      </nav>
+
+      {loading ? <LoadingSpinner className="min-h-36" /> : loadError ? <Empty title="Unable to load your tasks" detail={loadError} /> : (
+        <div className="space-y-3">
+          {tab === 'posted' && postedTasks.map((task) => (
+            <div key={task._id} className="space-y-2">
+              <TaskCard task={task} />
+              <TaskBidManager task={task} onUpdated={load} />
+            </div>
+          ))}
+          {tab === 'applications' && applicationTasks.map((application) => (
+            <div key={application._id} className="space-y-2">
+              <TaskCard task={application.task} showActions={false} />
+              <section className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-slate-900">Your offer: {formatCurrency(application.amount)}</p>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${application.status === 'Accepted' ? 'bg-emerald-50 text-emerald-700' : application.status === 'Rejected' ? 'bg-slate-100 text-slate-600' : 'bg-orange-50 text-orange-700'}`}>{application.status}</span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">Submitted {formatDateTime(application.createdAt)} · {application.task.bidCount ?? 0} total applications</p>
+                <p className="mt-2 text-sm text-slate-600">{application.message}</p>
+                <p className="mt-1 text-xs text-slate-500">Estimated completion: {application.estimatedCompletion}</p>
+                <Link href={`/tasks/${application.task._id}`} className="mt-2 inline-flex text-xs font-bold text-orange-600 hover:underline">View task details</Link>
+              </section>
+            </div>
+          ))}
+          {tab === 'applications' && applications.length > 0 && !applicationTasks.length && <Empty title="Application tasks are unavailable" detail="Your bid records are saved, but their task details are no longer available." />}
+          {tab === 'accepted' && activeAcceptedTasks.map((task) => (
+            <div key={task._id} className="space-y-2">
+              <TaskCard task={task} />
+              <TaskProgressDetails task={task} />
+            </div>
+          ))}
+          {tab === 'completed' && completedTasks.map((task) => (
+            <div key={task._id} className="space-y-2">
+              <TaskCard task={task} showActions={false} />
+              <section className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
+                <div><p className="font-bold text-emerald-700">Completed</p><p className="mt-1 text-slate-500">Completed {formatDateTime(task.progressNotes?.filter((note) => note.status === 'Completed').at(-1)?.createdAt || task.updatedAt)} · {task.bidCount ?? 0} applications</p></div>
+                <Link href={`/tasks/${task._id}`} className="font-bold text-orange-600 hover:underline">View task details</Link>
+              </section>
+            </div>
+          ))}
+          {tab === 'posted' && !postedTasks.length && <Empty title="No posted tasks yet" detail="Tasks you create will appear here, including cancelled and completed posts." />}
+          {tab === 'applications' && !applications.length && <Empty title="No applications yet" detail="When you bid on a task, its status and offer will appear here." />}
+          {tab === 'accepted' && !activeAcceptedTasks.length && <Empty title="No active accepted tasks" detail="Tasks assigned to you will appear here with their progress." />}
+          {tab === 'completed' && !completedTasks.length && <Empty title="No completed tasks yet" detail="Completed tasks you posted or worked on will appear here." />}
+        </div>
+      )}
     </div>
+  );
+}
+
+function TaskProgressDetails({ task }: { task: Task }) {
+  const latestProgress = task.progressNotes?.at(-1);
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-700">{task.status}</span>
+        <span className="text-xs font-semibold text-slate-500">Task owner: {task.poster?.fullName || 'TaskAnt member'}</span>
+      </div>
+      {latestProgress && <p className="mt-2 text-sm text-slate-600">{latestProgress.note}</p>}
+      <p className="mt-1 text-xs text-slate-500">Budget {formatCurrency(task.budget)} · Due {formatDate(task.deadline)}</p>
+    </section>
+  );
+}
+
+function TaskBidManager({ task, onUpdated }: { task: Task; onUpdated: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [bids, setBids] = useState<Bid[]>([]);
+  const [bidsLoaded, setBidsLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [accepting, setAccepting] = useState('');
+  const [error, setError] = useState('');
+
+  const toggle = async () => {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (!nextOpen || bids.length || loading) return;
+    setLoading(true);
+    setError('');
+    try {
+      const response = await bidsApi.getByTask(task._id);
+      setBids(response.data.bids);
+      setBidsLoaded(true);
+    } catch {
+      setError('Bids could not be loaded. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const accept = async (bidId: string) => {
+    setAccepting(bidId);
+    try {
+      await bidsApi.accept(bidId);
+      toast.success('Bid accepted and worker assigned');
+      await onUpdated();
+      const response = await bidsApi.getByTask(task._id);
+      setBids(response.data.bids);
+      setBidsLoaded(true);
+    } catch (error) {
+      toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to accept bid');
+    } finally {
+      setAccepting('');
+    }
+  };
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <button type="button" onClick={() => void toggle()} aria-expanded={open} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+        <span className="text-sm font-bold text-slate-800">Manage bids · {bidsLoaded ? `${bids.length} total` : `${task.bidCount ?? 0} applications`}</span>
+        <span className="text-xs font-bold text-orange-600">{open ? 'Hide' : 'View bids'}</span>
+      </button>
+      {open && (
+        <div className="space-y-2 border-t border-slate-100 p-3">
+          {loading && <LoadingSpinner className="min-h-16 py-2" />}
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          {!loading && !error && !bids.length && <p className="px-1 py-2 text-sm text-slate-500">No bids received yet.</p>}
+          {bids.map((bid) => (
+            <article key={bid._id} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <div className="flex items-start gap-3">
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-900 text-xs font-bold text-white">
+                  {bid.bidder?.profilePhoto ? <Image src={bid.bidder.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized /> : getInitials(bid.bidder?.fullName || 'TaskAnt member')}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="text-sm font-bold text-slate-900">{bid.bidder?.fullName || 'TaskAnt member'}</p>
+                    {bid.bidder?.verificationStatus === 'Verified' && <VerifiedBadge />}
+                  </div>
+                  <p className="text-xs text-slate-500">{bid.bidder?.location || 'Location unavailable'} · {bid.bidder?.rating.toFixed(1) || '0.0'} rating · {bid.bidder?.completedTasks ?? 0} completed</p>
+                </div>
+                <strong className="shrink-0 text-sm font-extrabold text-orange-600">{formatCurrency(bid.amount)}</strong>
+              </div>
+              <p className="mt-2 text-sm text-slate-600">{bid.message}</p>
+              <p className="mt-1 text-xs text-slate-500">Estimated completion: {bid.estimatedCompletion} · {bid.status}</p>
+              {bid.status === 'Pending' && ['Open', 'Bidding'].includes(task.status) && (
+                <Button size="sm" loading={accepting === bid._id} disabled={!!accepting} className="mt-3" onClick={() => void accept(bid._id)}>Accept applicant</Button>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -261,6 +377,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
       await bidsApi.create({ taskId, amount: Number(bid.amount), message: bid.message, estimatedCompletion: bid.estimatedCompletion });
       toast.success('Bid submitted');
       setBid({ amount: '', message: '', estimatedCompletion: '' });
+      await load();
     } catch (error) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to submit bid');
     } finally { setSaving(false); }
@@ -298,13 +415,13 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
       <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><span className="text-xs font-bold text-orange-600">{task.category}</span><h1 className="mt-1 text-2xl font-extrabold text-slate-950">{task.title}</h1></div><p className="text-2xl font-extrabold text-orange-600">{formatCurrency(task.budget)}</p></div>
-          <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-3"><span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-orange-500" />{task.location}</span><span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-orange-500" />{formatDate(task.deadline)}</span><span className="flex items-center gap-2"><Users className="h-4 w-4 text-orange-500" />{task.bidCount ?? bids.length} bids</span></div>
+          <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-3"><span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-orange-500" />{task.pickup && task.destination ? `${task.pickup} → ${task.destination}` : task.location}</span><span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-orange-500" />{formatDate(task.deadline)}</span><span className="flex items-center gap-2"><Users className="h-4 w-4 text-orange-500" />{task.bidCount ?? bids.length} bids</span></div>
         </div>
         <div className="p-5"><h2 className="font-bold text-slate-900">Task details</h2><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{task.description}</p>{!!task.attachments?.length && <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">{task.attachments.map((src) => <Image key={src} src={src} alt={`Photo for ${task.title}`} width={320} height={240} className="h-36 w-full rounded-lg object-cover" unoptimized />)}</div>}{task.additionalInstructions && <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600"><strong className="text-slate-900">Additional instructions:</strong> {task.additionalInstructions}</p>}</div>
       </article>
 
       {isPoster && ['Open', 'Bidding'].includes(task.status) && (
-        <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-5"><h2 className="font-extrabold text-slate-950">Received bids</h2>{bids.length ? <div className="mt-3 space-y-3">{bids.map((item) => <div key={item._id} className="rounded-xl border border-slate-200 p-4"><div className="flex justify-between gap-3"><div><p className="font-bold">{item.bidder?.fullName || 'TaskAnt member'}</p><p className="text-xs text-slate-500">{item.estimatedCompletion}</p></div><strong className="text-orange-600">{formatCurrency(item.amount)}</strong></div><p className="mt-2 text-sm text-slate-600">{item.message}</p>{item.status === 'Pending' && <Button size="sm" className="mt-3" onClick={() => void acceptBid(item._id)}>Accept bid</Button>}</div>)}</div> : <p className="mt-3 text-sm text-slate-500">No bids received yet.</p>}</section>
+        <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-extrabold text-slate-950">Received bids</h2><button type="button" onClick={() => void updateStatus('Cancelled')} className="text-xs font-semibold text-red-600 hover:underline">Cancel task</button></div>{bids.length ? <div className="mt-3 space-y-3">{bids.map((item) => <div key={item._id} className="rounded-xl border border-slate-200 p-4"><div className="flex justify-between gap-3"><div><p className="font-bold">{item.bidder?.fullName || 'TaskAnt member'}</p><p className="text-xs text-slate-500">{item.estimatedCompletion}</p></div><strong className="text-orange-600">{formatCurrency(item.amount)}</strong></div><p className="mt-2 text-sm text-slate-600">{item.message}</p>{item.status === 'Pending' && <Button size="sm" className="mt-3" onClick={() => void acceptBid(item._id)}>Accept bid</Button>}</div>)}</div> : <p className="mt-3 text-sm text-slate-500">No bids received yet.</p>}</section>
       )}
 
       {!isPoster && ['Open', 'Bidding'].includes(task.status) && (

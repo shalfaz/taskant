@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import type { AxiosError } from 'axios';
+import axios from 'axios';
 import {
   Bell, Bookmark, BriefcaseBusiness, CarFront, CheckSquare, ChevronDown, CircleHelp, CreditCard,
   Grid2X2, LayoutDashboard, ListTodo, LogOut, Menu, MessageSquare, Search, Settings,
@@ -57,9 +57,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user && !isAdmin) {
       notificationsApi.list().then((res) => setUnread(res.data.unreadCount)).catch((error: unknown) => {
-        const status = (error as AxiosError<{ status?: number }>).response?.status;
-        if (status === 401) return;
-        console.error('Unable to load notifications', { status });
+        const isApiError = axios.isAxiosError<{ message?: string }>(error);
+        console.error('Unable to load notifications', {
+          status: isApiError ? error.response?.status : undefined,
+          code: isApiError ? error.code : undefined,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          serverMessage: isApiError ? error.response?.data?.message : undefined,
+          requestId: isApiError ? error.response?.headers?.['x-request-id'] : undefined,
+        });
       });
     }
   }, [user, isAdmin, pathname]);

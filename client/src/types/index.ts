@@ -25,6 +25,8 @@ export interface Task {
   description: string;
   category: string;
   location: string;
+  pickup?: string;
+  destination?: string;
   deadline: string;
   budget: number;
   additionalInstructions?: string;
@@ -112,7 +114,7 @@ export interface Bid {
   estimatedCompletion: string;
   status: 'Pending' | 'Accepted' | 'Rejected';
   bidder?: User;
-  task?: Task;
+  task?: Task | null;
   createdAt: string;
 }
 
@@ -193,14 +195,13 @@ export interface DashboardStats {
 }
 
 export const TASK_CATEGORIES = [
+  'Delivery',
+  'Shopping & Errands',
   'Document & Office Work',
-  'Parcel & Delivery',
-  'Shopping & Purchase',
-  'Academic Services',
-  'Local Errands',
-  'Government/Institutional Assistance',
-  'Personal Assistance',
-  'Other',
+  'Home Services',
+  'Technology',
+  'Education',
+  'Others',
 ];
 
 export const REPORT_TYPES = [

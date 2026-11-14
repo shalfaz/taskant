@@ -57,6 +57,8 @@ export interface TaskDocument extends Document {
   description: string;
   category: TaskCategory;
   location: string;
+  pickup?: string;
+  destination?: string;
   deadline: Date;
   budget: number;
   additionalInstructions?: string;
@@ -75,6 +77,8 @@ const taskSchema = new Schema<TaskDocument>(
     description: { type: String, required: true },
     category: { type: String, required: true },
     location: { type: String, required: true },
+    pickup: String,
+    destination: String,
     deadline: { type: Date, required: true },
     budget: { type: Number, required: true },
     additionalInstructions: String,
