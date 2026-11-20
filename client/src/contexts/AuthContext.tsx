@@ -53,63 +53,100 @@ function readStoredUser(): User | null {
   return null;
 }
 
+function isJwtExpired(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    const payload = JSON.parse(payloadJson) as { exp?: unknown };
+    if (typeof payload.exp !== 'number') return false;
+    return payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
+    const clearSession = () => {
+      try {
+        localStorage.removeItem('taskant_token');
+        localStorage.removeItem('taskant_user');
+      } catch {
+        // Ignore storage errors.
+      }
+      disconnectSocket();
+      if (active) {
+        setToken(null);
+        setUser(null);
+      }
+    };
+
     const handleUnauthorized = () => {
-      setToken(null);
-      setUser(null);
+      clearSession();
+      if (active) setLoading(false);
     };
     window.addEventListener('taskant:unauthorized', handleUnauthorized);
 
     const restoreSession = async () => {
-      await Promise.resolve();
       try {
         const storedToken = localStorage.getItem('taskant_token');
         const cachedUser = readStoredUser();
         const validToken =
           storedToken?.trim() && storedToken !== 'undefined' && storedToken !== 'null'
-            ? storedToken
+            ? storedToken.trim()
             : null;
-        setToken(validToken);
-        setUser(cachedUser);
 
-        if (validToken) {
-          try {
-            const res = await authApi.me();
-            if (!isUser(res.data.user)) {
-              throw new Error('The authentication response did not contain a valid user');
-            }
-            setUser(res.data.user);
-            localStorage.setItem('taskant_user', JSON.stringify(res.data.user));
-          } catch (error: unknown) {
-            const status = axios.isAxiosError(error) ? error.response?.status : undefined;
-            if (status === undefined || status >= 500) {
-              console.error('Unable to verify the saved TaskAnt session', {
-                status,
-                code: axios.isAxiosError(error) ? error.code : undefined,
-                message: error instanceof Error ? error.message : 'Unknown error',
-              });
-              return;
-            }
-            localStorage.removeItem('taskant_token');
-            localStorage.removeItem('taskant_user');
-            setToken(null);
-            setUser(null);
+        if (!validToken || isJwtExpired(validToken)) {
+          clearSession();
+          return;
+        }
+
+        try {
+          const res = await authApi.me();
+          if (!isUser(res.data.user)) {
+            throw new Error('The authentication response did not contain a valid user');
           }
+          if (active) {
+            setToken(validToken);
+            setUser(res.data.user);
+          }
+          localStorage.setItem('taskant_user', JSON.stringify(res.data.user));
+        } catch (error: unknown) {
+          const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+          if ((status === undefined || status >= 500) && cachedUser) {
+            console.error('Unable to verify the saved TaskAnt session', {
+              status,
+              code: axios.isAxiosError(error) ? error.code : undefined,
+              message: error instanceof Error ? error.message : 'Unknown error',
+            });
+            if (active) {
+              setToken(validToken);
+              setUser(cachedUser);
+            }
+            return;
+          }
+          clearSession();
         }
       } catch {
         console.error('Unable to restore the saved TaskAnt session');
+        clearSession();
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     void restoreSession();
-    return () => window.removeEventListener('taskant:unauthorized', handleUnauthorized);
+    return () => {
+      active = false;
+      window.removeEventListener('taskant:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {

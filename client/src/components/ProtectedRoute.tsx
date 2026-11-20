@@ -39,8 +39,8 @@ export function GuestRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (user) router.replace(user.role === 'admin' ? '/admin' : '/dashboard');
-  }, [router, user]);
+    if (!loading && user) router.replace(user.role === 'admin' ? '/admin' : '/dashboard');
+  }, [loading, router, user]);
 
   if (loading) return <LoadingSpinner className="min-h-screen" />;
   if (user) return <LoadingSpinner className="min-h-screen" />;

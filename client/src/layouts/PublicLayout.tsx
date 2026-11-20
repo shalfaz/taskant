@@ -16,9 +16,13 @@ const navLinks = [
 ];
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+
+  if (pathname === '/') {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -42,7 +46,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
             </nav>
 
             <div className="hidden md:flex items-center gap-3">
-              {user ? (
+              {loading ? null : user ? (
                 <Link href={user.role === 'admin' ? '/admin' : '/dashboard'}>
                   <Button size="sm">Dashboard</Button>
                 </Link>
