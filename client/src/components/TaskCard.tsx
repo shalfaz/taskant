@@ -79,7 +79,7 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
   };
 
   return (
-    <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
       <header className="flex items-center gap-3 px-4 pt-3.5">
         <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-900 text-sm font-bold text-white">{task.poster?.profilePhoto ? <Image src={task.poster.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized /> : posterName.charAt(0)}</div>
         <div className="min-w-0 flex-1">
@@ -91,13 +91,13 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
       </header>
 
       <div className="px-4 pb-3 pt-3">
-        {!!task.attachments?.length && <div className="mb-3 flex gap-2 overflow-x-auto">{task.attachments.map((src) => <Image key={src} src={src} alt={`Photo for ${task.title}`} width={180} height={120} className="h-28 w-40 shrink-0 rounded-lg object-cover" unoptimized />)}</div>}
         <div className="flex items-start justify-between gap-3">
           <h3 className="min-w-0 text-[15px] font-bold leading-5 text-slate-950">{task.title}</h3>
           <span className="shrink-0 text-sm font-extrabold text-orange-600">{formatCurrency(task.budget)}</span>
         </div>
         {isPreview && <span className="mt-2 inline-flex rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">Demo preview</span>}
         <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-slate-600">{task.description}</p>
+        {!!task.attachments?.length && <div className={`mt-3 grid gap-2 ${task.attachments.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>{task.attachments.map((src) => <Image key={src} src={src} alt={`Photo for ${task.title}`} width={600} height={380} className="w-full max-h-[380px] rounded-xl object-cover" unoptimized />)}</div>}
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600">
           <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-orange-500" />{locationLabel}</span>
           <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-slate-400" />Due {formatDate(task.deadline)}</span>

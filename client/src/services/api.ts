@@ -3,19 +3,22 @@ import { API_URL } from './config';
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 12000,
   headers: { 'Content-Type': 'application/json' },
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('taskant_token');
-  if (token) config.headers.Authorization = 'Bearer ' + token;
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('taskant_token');
+    if (token) config.headers.Authorization = 'Bearer ' + token;
+  }
   return config;
 });
 
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('taskant_token');
       localStorage.removeItem('taskant_user');
       window.dispatchEvent(new Event('taskant:unauthorized'));
@@ -29,7 +32,7 @@ export default api;
 export const authApi = {
   register: (data: Record<string, string>) => api.post('/auth/register', data),
   login: (data: { email: string; password: string }) => api.post('/auth/login', data),
-  me: () => api.get('/auth/me'),
+  me: () => api.get('/auth/me', { timeout: 8000 }),
   logout: () => api.post('/auth/logout'),
 };
 

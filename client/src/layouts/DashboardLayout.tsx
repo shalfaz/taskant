@@ -93,7 +93,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#f2f4f7]">
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      <aside className="taskant-sidebar fixed left-0 top-14 z-40 hidden h-[calc(100vh-56px)] w-[220px] overflow-y-auto bg-[#f2f4f7] px-2 py-3 lg:block">
+      <aside className="taskant-sidebar fixed left-0 top-16 z-40 hidden h-[calc(100vh-64px)] w-[220px] overflow-y-auto bg-[#f2f4f7] px-2 pb-6 pt-3 lg:block">
         <div className="mb-2 flex items-center gap-3 rounded-md px-2 py-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
             {user?.fullName.charAt(0)}
@@ -119,11 +119,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         )}
       </aside>
 
-      <header className="sticky top-0 z-30 grid h-14 grid-cols-[220px_1fr_220px] items-center border-b border-slate-200 bg-white px-2 shadow-[0_1px_2px_rgba(15,23,42,.06)] max-md:grid-cols-[auto_1fr_auto]">
-        <button className="mr-1 p-2 lg:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-6 w-6" /></button>
-        <Link href="/dashboard" className="hidden sm:block"><Logo size="sm" /></Link>
+      <header className="sticky top-0 z-30 flex h-16 flex-nowrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 shadow-[0_1px_2px_rgba(15,23,42,.06)] lg:px-4">
+        <div className="flex shrink-0 items-center gap-2 lg:w-[220px]">
+          <button className="shrink-0 p-2 lg:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-6 w-6" /></button>
+          <Link href="/dashboard" className="hidden shrink-0 sm:block"><Logo size="sm" /></Link>
+        </div>
         {!isAdmin && (
-          <nav className="hidden h-full w-full max-w-[620px] grid-cols-5 justify-self-center items-stretch md:grid">
+          <nav className="hidden h-full w-full max-w-[600px] grid-cols-5 items-stretch xl:grid">
             {[
               { href: '/dashboard', icon: BriefcaseBusiness, label: 'Task Worker' },
               { href: '/my-tasks', icon: LayoutDashboard, label: 'My Tasks' },
@@ -138,13 +140,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </nav>
         )}
         {!isAdmin && (
-          <div className="flex items-center justify-end gap-1">
-            <Link href="/tasks" title="Search" className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"><Search className="h-5 w-5" /></Link>
-            <Link href="/messages" title="Messages" className={`relative flex h-10 w-10 items-center justify-center rounded-full ${pathname === '/messages' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><MessageSquare className="h-5 w-5" /></Link>
-            <Link href="/notifications" title="Notifications" className={`relative flex h-10 w-10 items-center justify-center rounded-full ${pathname === '/notifications' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+          <div className="flex shrink-0 items-center justify-end gap-1.5 lg:w-[220px]">
+            <Link href="/tasks" title="Search" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"><Search className="h-5 w-5" /></Link>
+            <Link href="/messages" title="Messages" className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${pathname === '/messages' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><MessageSquare className="h-5 w-5" /></Link>
+            <Link href="/notifications" title="Notifications" className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${pathname === '/notifications' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               <Bell className="h-5 w-5" />{unread > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{unread}</span>}
             </Link>
-            <Link href="/profile" title="Profile" className="ml-1 flex items-center gap-1 rounded-full border border-slate-200 p-1.5 pl-2">
+            <Link href="/profile" title="Profile" className="ml-1 flex shrink-0 items-center gap-1 rounded-full border border-slate-200 p-1.5 pl-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{user?.fullName.charAt(0)}</span>
               <ChevronDown className="hidden h-4 w-4 text-slate-500 sm:block" />
             </Link>
@@ -152,7 +154,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main>
+      <main className="px-2 lg:px-[228px]">
         {pathname !== '/dashboard' ? (
           <div className="mx-auto w-full max-w-[560px]">{children}</div>
         ) : children}

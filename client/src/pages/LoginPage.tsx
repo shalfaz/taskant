@@ -51,7 +51,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-950 lg:grid lg:grid-cols-[1.08fr_0.92fr]">
       <div className="relative hidden overflow-hidden bg-slate-950 p-12 lg:flex lg:flex-col lg:justify-between">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(249,115,22,0.22),transparent_32%),radial-gradient(circle_at_85%_80%,rgba(249,115,22,0.12),transparent_28%)]" />
-        <Logo size="lg" className="relative rounded-xl bg-white px-5 py-4 [&_span]:text-slate-700 [&_span_span]:text-slate-500" showTagline />
+        <Logo size="lg" className="relative w-fit rounded-xl bg-white/95 px-4 py-2.5 [&_span]:text-slate-700 [&_span_span]:text-slate-500" showTagline />
         <div className="relative max-w-xl">
           <p className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-orange-400">Your local task network</p>
           <h2 className="text-5xl font-extrabold leading-tight text-white">Get things done.<br /><span className="text-orange-500">Help your community.</span></h2>
@@ -59,15 +59,15 @@ export default function LoginPage() {
         </div>
         <p className="relative text-sm text-slate-500">One account. Every opportunity.</p>
       </div>
-      <div className="flex min-h-screen items-center justify-center bg-white p-6 sm:p-10">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white p-6 sm:p-10">
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden"><Logo showTagline /></div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">Welcome back</p>
           <h1 className="mt-2 text-3xl font-extrabold text-slate-950">Sign in to TaskAnt</h1>
           <p className="mb-8 mt-2 text-sm text-slate-500">Access your marketplace, tasks, bids, and messages.</p>
           <form onSubmit={handleSubmit} className="space-y-5">
-            <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} placeholder="you@example.com" />
-            <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} placeholder="••••••••" />
+            <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} placeholder="you@example.com" className="focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500" />
+            <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} placeholder="••••••••" className="focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500" />
             <Button type="submit" loading={loading} className="w-full">Sign In</Button>
           </form>
           <p className="mt-6 text-center text-sm text-gray-500">
