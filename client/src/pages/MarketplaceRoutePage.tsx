@@ -151,6 +151,19 @@ function MyTasksPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await tasksApi.remove(taskId);
+      setPostedTasks((current) => current.filter((item) => item._id !== taskId));
+      toast.success('Task deleted successfully');
+    } catch (error) {
+      toast.error(
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Unable to delete this task'
+      );
+    }
+  };
+
   const allUserTasks = Array.from(
     new Map([...postedTasks, ...acceptedTasks].map((task) => [task._id, task])).values()
   );
@@ -207,7 +220,7 @@ function MyTasksPage() {
         <div className="space-y-3">
           {tab === 'posted' && postedTasks.map((task) => (
             <div key={task._id} className="space-y-2">
-              <TaskCard task={task} />
+              <TaskCard task={task} onDelete={handleDeleteTask} />
               <TaskBidManager task={task} onUpdated={load} />
             </div>
           ))}
@@ -436,7 +449,28 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
 }
 
 function CategoriesPage() {
-  return <div className="mx-auto max-w-5xl px-3 py-5"><PageHeading title="Categories" description="Explore work by skill and service area." /><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{TASK_CATEGORIES.map((category, index) => <Link key={category} href={`/tasks?category=${encodeURIComponent(category)}`} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-orange-300"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 font-extrabold text-orange-600">{index + 1}</span><h2 className="mt-4 font-extrabold text-slate-900 group-hover:text-orange-600">{category}</h2><p className="mt-1 text-xs text-slate-500">Browse available tasks</p></Link>)}</div></div>;
+  return (
+    <div className="mx-auto w-full max-w-5xl px-3 py-5">
+      <PageHeading title="Categories" description="Explore work by skill and service area." />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {TASK_CATEGORIES.map((category, index) => (
+          <Link
+            key={category}
+            href={`/tasks?category=${encodeURIComponent(category)}`}
+            className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-orange-300"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 font-extrabold text-orange-600">
+              {index + 1}
+            </span>
+            <h2 className="mt-4 break-words font-extrabold leading-snug text-slate-900 group-hover:text-orange-600">
+              {category}
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">Browse available tasks</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function SavedTasksPage() {

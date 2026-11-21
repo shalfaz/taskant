@@ -32,6 +32,8 @@ export default api;
 export const authApi = {
   register: (data: Record<string, string>) => api.post('/auth/register', data),
   login: (data: { email: string; password: string }) => api.post('/auth/login', data),
+  social: (data: { email: string; name?: string | null; avatar?: string | null; provider: string }) =>
+    api.post('/auth/social', data),
   me: () => api.get('/auth/me', { timeout: 8000 }),
   logout: () => api.post('/auth/logout'),
 };
@@ -51,6 +53,7 @@ export const tasksApi = {
   updateStatus: (id: string, data: { status: string; note?: string }) =>
     api.patch(`/tasks/${id}/status`, data),
   confirmCompletion: (id: string) => api.post(`/tasks/${id}/confirm-completion`),
+  remove: (id: string) => api.delete(`/tasks/${id}`),
 };
 
 export const ridesApi = {

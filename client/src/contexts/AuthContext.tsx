@@ -9,6 +9,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
+  socialLogin: (data: { email: string; name?: string | null; avatar?: string | null; provider: string }) => Promise<User>;
   register: (data: Record<string, string>) => Promise<void>;
   logout: () => Promise<boolean>;
   updateUser: (user: User) => void;
@@ -121,11 +122,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error: unknown) {
           const status = axios.isAxiosError(error) ? error.response?.status : undefined;
           if ((status === undefined || status >= 500) && cachedUser) {
-            console.error('Unable to verify the saved TaskAnt session', {
-              status,
-              code: axios.isAxiosError(error) ? error.code : undefined,
-              message: error instanceof Error ? error.message : 'Unknown error',
-            });
+            if (status !== undefined) {
+              console.warn('Unable to verify the saved TaskAnt session', {
+                status,
+                code: axios.isAxiosError(error) ? error.code : undefined,
+                message: error instanceof Error ? error.message : 'Unknown error',
+              });
+            }
             if (active) {
               setToken(validToken);
               setUser(cachedUser);
@@ -135,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearSession();
         }
       } catch {
-        console.error('Unable to restore the saved TaskAnt session');
+        console.warn('Unable to restore the saved TaskAnt session');
         clearSession();
       } finally {
         if (active) setLoading(false);
@@ -151,6 +154,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<User> => {
     const res = await authApi.login({ email: email.trim(), password });
+    if (
+      typeof res.data.token !== 'string' ||
+      !res.data.token.trim() ||
+      !isUser(res.data.user)
+    ) {
+      throw new Error('The authentication response did not contain a valid session');
+    }
+    setToken(res.data.token);
+    setUser(res.data.user);
+    localStorage.setItem('taskant_token', res.data.token);
+    localStorage.setItem('taskant_user', JSON.stringify(res.data.user));
+    return res.data.user;
+  };
+
+  const socialLogin = async (data: {
+    email: string;
+    name?: string | null;
+    avatar?: string | null;
+    provider: string;
+  }): Promise<User> => {
+    const res = await authApi.social(data);
     if (
       typeof res.data.token !== 'string' ||
       !res.data.token.trim() ||
@@ -212,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         loading,
         login,
+        socialLogin,
         register,
         logout,
         updateUser,

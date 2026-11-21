@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [user, isAdmin, pathname]);
 
   const renderSidebarLinks = () => (
-    <nav className="space-y-1">
+    <nav className="space-y-0">
       {links.map((link) => {
         const Icon = link.icon;
         const active =
@@ -79,10 +79,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           (link.to === '/dashboard' && pathname === '/dashboard');
         return (
           <Link key={link.to} href={link.to} onClick={() => setSidebarOpen(false)}
-            className={`flex items-center gap-3 rounded-md px-2 py-2 text-sm font-semibold transition-colors ${active ? 'text-orange-700' : 'text-slate-600 hover:text-slate-900'}`}>
-            <Icon className={`h-5 w-5 ${active ? 'text-orange-600' : 'text-slate-500'}`} />
-            {link.label}
-            {link.to === '/messages' && <span className="ml-auto h-2 w-2 rounded-full bg-orange-500" />}
+            className={`flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-[13.5px] leading-4 transition-colors ${active ? 'bg-orange-50/80 font-semibold text-orange-600' : 'font-medium text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'}`}>
+            <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-orange-600' : 'text-slate-500'}`} />
+            <span className="truncate">{link.label}</span>
+            {link.to === '/messages' && <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-orange-500" />}
           </Link>
         );
       })}
@@ -90,42 +90,30 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#f2f4f7]">
+    <div className="min-h-screen overflow-x-clip bg-[#F0F2F5]">
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      <aside className="taskant-sidebar fixed left-0 top-16 z-40 hidden h-[calc(100vh-64px)] w-[220px] overflow-y-auto bg-[#f2f4f7] px-2 pb-6 pt-3 lg:block">
-        <div className="mb-2 flex items-center gap-3 rounded-md px-2 py-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
-            {user?.fullName.charAt(0)}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-slate-900">{user?.fullName}</p>
-            <p className="truncate text-xs text-slate-500">{user?.location}</p>
-          </div>
+      <aside className={`taskant-sidebar fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col justify-between overflow-y-auto bg-white pb-10 shadow-2xl transition-transform lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div>
+          <div className="flex h-16 items-center justify-between border-b border-slate-200/80 px-4"><Link href="/dashboard"><Logo size="sm" /></Link><button className="p-2" onClick={() => setSidebarOpen(false)}><X className="h-5 w-5" /></button></div>
+          <div className="p-3">{renderSidebarLinks()}</div>
         </div>
-        {renderSidebarLinks()}
-        <button onClick={() => void handleLogout()} className="mt-2 flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-semibold text-slate-600 hover:text-red-600">
-          <LogOut className="h-5 w-5" /> Log out
-        </button>
-      </aside>
-
-      <aside className={`taskant-sidebar fixed inset-y-0 left-0 z-50 w-[280px] overflow-y-auto bg-white shadow-2xl transition-transform lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex h-17 items-center justify-between border-b px-4"><Link href="/dashboard"><Logo size="sm" /></Link><button className="p-2" onClick={() => setSidebarOpen(false)}><X className="h-5 w-5" /></button></div>
-        <div className="overflow-y-auto p-3">{renderSidebarLinks()}</div>
         {!isAdmin && (
-          <button onClick={() => { setSidebarOpen(false); void handleLogout(); }} className="mx-3 mt-2 flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-semibold text-red-600">
-            <LogOut className="h-5 w-5" /> Log out
-          </button>
+          <div className="mx-3 mt-2 border-t border-slate-200/80 pt-2">
+            <button onClick={() => { setSidebarOpen(false); void handleLogout(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-600">
+              <LogOut className="h-5 w-5 shrink-0" /> Log out
+            </button>
+          </div>
         )}
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-16 flex-nowrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 shadow-[0_1px_2px_rgba(15,23,42,.06)] lg:px-4">
-        <div className="flex shrink-0 items-center gap-2 lg:w-[220px]">
+      <header className="sticky top-0 z-30 flex h-16 flex-nowrap items-center justify-between gap-2 border-b border-slate-200/80 bg-white px-3 shadow-xs lg:px-4">
+        <div className="flex shrink-0 items-center gap-2 lg:w-[240px]">
           <button className="shrink-0 p-2 lg:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-6 w-6" /></button>
           <Link href="/dashboard" className="hidden shrink-0 sm:block"><Logo size="sm" /></Link>
         </div>
         {!isAdmin && (
-          <nav className="hidden h-full w-full max-w-[600px] grid-cols-5 items-stretch xl:grid">
+          <nav className="hidden h-full min-w-0 flex-1 max-w-[600px] items-stretch justify-center sm:flex">
             {[
               { href: '/dashboard', icon: BriefcaseBusiness, label: 'Task Worker' },
               { href: '/my-tasks', icon: LayoutDashboard, label: 'My Tasks' },
@@ -133,20 +121,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               { href: '/store', icon: Store, label: 'Online Store' },
               { href: '/categories', icon: Grid2X2, label: 'Categories' },
             ].map((item) => (
-              <Link key={item.href} href={item.href} title={item.label} className={`relative flex items-center justify-center border-b-[3px] px-3 ${pathname === item.href || (item.href === '/my-tasks' && pathname.startsWith('/my-tasks')) ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}>
-                <item.icon className="h-5 w-5" />
+              <Link key={item.href} href={item.href} title={item.label} className={`relative flex flex-1 items-center justify-center border-b-[3px] px-1.5 sm:px-3 ${pathname === item.href || (item.href === '/my-tasks' && pathname.startsWith('/my-tasks')) ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}>
+                <item.icon className="h-5 w-5 shrink-0" />
               </Link>
             ))}
           </nav>
         )}
         {!isAdmin && (
-          <div className="flex shrink-0 items-center justify-end gap-1.5 lg:w-[220px]">
-            <Link href="/tasks" title="Search" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"><Search className="h-5 w-5" /></Link>
-            <Link href="/messages" title="Messages" className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${pathname === '/messages' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><MessageSquare className="h-5 w-5" /></Link>
-            <Link href="/notifications" title="Notifications" className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${pathname === '/notifications' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-              <Bell className="h-5 w-5" />{unread > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{unread}</span>}
+          <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-1.5 lg:w-[240px]">
+            <Link href="/tasks" title="Search" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 sm:h-10 sm:w-10"><Search className="h-4 w-4 sm:h-5 sm:w-5" /></Link>
+            <Link href="/messages" title="Messages" className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10 ${pathname === '/messages' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" /></Link>
+            <Link href="/notifications" title="Notifications" className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10 ${pathname === '/notifications' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />{unread > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{unread}</span>}
             </Link>
-            <Link href="/profile" title="Profile" className="ml-1 flex shrink-0 items-center gap-1 rounded-full border border-slate-200 p-1.5 pl-2">
+            <Link href="/profile" title="Profile" className="ml-0.5 flex shrink-0 items-center gap-1 rounded-full border border-slate-200 p-1 pl-1.5 sm:ml-1 sm:p-1.5 sm:pl-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{user?.fullName.charAt(0)}</span>
               <ChevronDown className="hidden h-4 w-4 text-slate-500 sm:block" />
             </Link>
@@ -154,11 +142,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main className="px-2 lg:px-[228px]">
-        {pathname !== '/dashboard' ? (
-          <div className="mx-auto w-full max-w-[560px]">{children}</div>
-        ) : children}
-      </main>
+      <div className="flex w-full">
+        <aside className="taskant-sidebar sticky top-16 hidden h-[calc(100dvh-64px)] w-[240px] shrink-0 flex-col justify-between overflow-y-auto bg-[#F0F2F5] px-2.5 pt-2 pb-4 lg:flex">
+          <div>
+            <div className="mb-1.5 flex items-center gap-2.5 border-b border-slate-200/70 px-2 pb-1.5 pt-0.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                {user?.fullName.charAt(0)}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[13.5px] font-bold leading-tight text-slate-900">{user?.fullName}</p>
+                <p className="truncate text-[11px] leading-tight text-slate-500">{user?.location}</p>
+              </div>
+            </div>
+            {renderSidebarLinks()}
+          </div>
+          <div className="mt-1.5 shrink-0 border-t border-slate-200/80 pt-1.5">
+            <button onClick={() => void handleLogout()} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-1.5 text-[13.5px] leading-4 font-medium text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-600">
+              <LogOut className="h-4 w-4 shrink-0" /> Log out
+            </button>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 overflow-x-hidden px-2 lg:pr-[240px]">
+          {pathname !== '/dashboard' ? (
+            <div className="mx-auto w-full max-w-[600px]">{children}</div>
+          ) : children}
+        </main>
+      </div>
     </div>
   );
 }
