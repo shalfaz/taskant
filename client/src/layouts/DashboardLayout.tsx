@@ -12,6 +12,7 @@ import {
   Shield, Store, User, X,
 } from 'lucide-react';
 import Logo from '../components/Logo';
+import SupportChatWidget from '../components/SupportChatWidget';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi } from '../services/api';
 
@@ -45,6 +46,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const links = isAdmin ? adminLinks : userLinks;
 
@@ -77,6 +79,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           pathname === link.to ||
           (link.to === '/my-tasks' && pathname.startsWith('/my-tasks')) ||
           (link.to === '/dashboard' && pathname === '/dashboard');
+        if (link.to === '/help') {
+          return (
+            <button
+              key={link.to}
+              type="button"
+              onClick={() => { setSidebarOpen(false); setSupportOpen(true); }}
+              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-1.5 text-left text-[13.5px] leading-4 transition-colors ${supportOpen ? 'bg-orange-50/80 font-semibold text-orange-600' : 'font-medium text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'}`}
+            >
+              <Icon className={`h-4 w-4 shrink-0 ${supportOpen ? 'text-orange-600' : 'text-slate-500'}`} />
+              <span className="truncate">{link.label}</span>
+            </button>
+          );
+        }
         return (
           <Link key={link.to} href={link.to} onClick={() => setSidebarOpen(false)}
             className={`flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-[13.5px] leading-4 transition-colors ${active ? 'bg-orange-50/80 font-semibold text-orange-600' : 'font-medium text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'}`}>
@@ -169,6 +184,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           ) : children}
         </main>
       </div>
+      <SupportChatWidget open={supportOpen} onOpenChange={setSupportOpen} />
     </div>
   );
 }
