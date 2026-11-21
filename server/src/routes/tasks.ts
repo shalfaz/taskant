@@ -188,4 +188,22 @@ router.post('/:id/confirm-completion', authenticate, asyncHandler(async (req: Au
   res.json({ task: await enrichTask(task), message: 'Completion confirmed. Proceed to payment.' });
 }));
 
+router.delete('/:id', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const task = await findRecord<ITask>(Task, req.params.id);
+  if (!task) {
+    res.status(404).json({ message: 'Task not found' });
+    return;
+  }
+  if (task.posterId !== req.user!.id) {
+    res.status(403).json({ message: 'Only the task poster can delete this task' });
+    return;
+  }
+  await Promise.all([
+    Task.findByIdAndDelete(task._id).exec(),
+    Bid.deleteMany({ taskId: task._id }).exec(),
+    User.updateOne({ _id: req.user!.id, postedTasks: { $gt: 0 } }, { $inc: { postedTasks: -1 } }).exec(),
+  ]);
+  res.json({ message: 'Task deleted successfully', id: task._id });
+}));
+
 export default router;

@@ -8,17 +8,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { LoadingSpinner } from '../components/ui/Card';
 import TaskCard from '../components/TaskCard';
 import TaskComposer from '../components/TaskComposer';
-import type { Task } from '../types';
+import { TASK_CATEGORIES, type Task } from '../types';
 
-const categories = [
-  'Delivery',
-  'Shopping & Errands',
-  'Document & Office Work',
-  'Home Services',
-  'Technology',
-  'Education',
-  'Others',
-];
+const categories = TASK_CATEGORIES;
 
 const demoAuthors = [
   { _id: 'demo-author-1', fullName: 'Nusrat Jahan', location: 'Dhanmondi, Dhaka', role: 'user' as const, verificationStatus: 'Verified' as const, rating: 4.8, reviewCount: 12, completedTasks: 8, postedTasks: 15, createdAt: new Date().toISOString() },
@@ -38,7 +30,7 @@ const demoTasks: Task[] = [
     _id: 'preview-dhaka-documents',
     title: 'Deliver signed documents to Dhanmondi',
     description: 'Collect a sealed envelope from the university office and deliver it to a nearby apartment. Please keep the documents dry.',
-    category: 'Delivery',
+    category: 'Parcel & Delivery',
     location: 'Motijheel → Dhanmondi 27, Dhaka',
     pickup: 'Motijheel, Dhaka',
     destination: 'Dhanmondi 27, Dhaka',
@@ -55,7 +47,7 @@ const demoTasks: Task[] = [
     _id: 'preview-pabna-parcel',
     title: 'Drop off a small parcel at New Market',
     description: 'A lightweight package needs to go from my home to a shop inside New Market before the evening rush.',
-    category: 'Delivery',
+    category: 'Parcel & Delivery',
     location: 'Pabna Sadar, Pabna',
     pickup: 'Pabna Sadar, Pabna',
     destination: 'Pabna New Market',
@@ -72,7 +64,7 @@ const demoTasks: Task[] = [
     _id: 'preview-grocery-shopping',
     title: 'Pick up groceries from Bashundhara',
     description: 'The shopping list is ready. Please pick up the items from the super shop and bring them to my apartment.',
-    category: 'Shopping & Errands',
+    category: 'Shopping & Purchase',
     location: 'Bashundhara R/A, Dhaka',
     deadline: inHours(55),
     budget: 500,
@@ -102,7 +94,7 @@ const demoTasks: Task[] = [
     _id: 'preview-home-cleaning',
     title: 'Help with a one-time apartment clean',
     description: 'A two-bedroom apartment needs a careful kitchen, bathroom, and balcony clean before visiting family arrive.',
-    category: 'Home Services',
+    category: 'Local Errands',
     location: 'Khulshi, Chattogram',
     deadline: inHours(96),
     budget: 1800,
@@ -117,7 +109,7 @@ const demoTasks: Task[] = [
     _id: 'preview-wifi-setup',
     title: 'Set up a home Wi-Fi router and printer',
     description: 'Connect the new router, secure the network, and help pair a wireless printer with two laptops.',
-    category: 'Technology',
+    category: 'Personal Assistance',
     location: 'Uttara Sector 7, Dhaka',
     deadline: inHours(120),
     budget: 1200,
@@ -132,7 +124,7 @@ const demoTasks: Task[] = [
     _id: 'preview-math-tutor',
     title: 'Find a Class 8 mathematics tutor',
     description: 'Looking for a patient tutor for two evening sessions focused on algebra and geometry practice.',
-    category: 'Education',
+    category: 'Academic Services',
     location: 'Binodpur, Rajshahi',
     deadline: inHours(144),
     budget: 800,
@@ -147,7 +139,7 @@ const demoTasks: Task[] = [
     _id: 'preview-event-setup',
     title: 'Set up chairs and tables for a community event',
     description: 'Help arrange chairs, a welcome table, and light refreshments at the community hall before guests arrive.',
-    category: 'Others',
+    category: 'Other',
     location: 'Zindabazar, Sylhet',
     deadline: inHours(168),
     budget: 1400,
@@ -225,11 +217,11 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-[600px] px-1 py-4 sm:px-0">
-      <section className="mb-4 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
+      <section className="mb-4 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-xs">
         {!composerOpen ? (
           <button type="button" onClick={() => setComposerOpen(true)} className="flex w-full items-center gap-3 text-left">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">{user?.fullName.charAt(0)}</div>
-            <span className="flex h-9 flex-1 items-center rounded-full bg-slate-100 px-4 text-sm text-slate-500">Share a task or ask for local help...</span>
+            <span className="flex h-10 flex-1 items-center rounded-full bg-slate-100 px-4 text-sm text-slate-500 transition-colors hover:bg-slate-200/70">Share a task or ask for local help...</span>
           </button>
         ) : (
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -240,40 +232,46 @@ export default function DashboardPage() {
         {composerOpen ? (
           <div className="pt-3"><TaskComposer compact onCreated={handleTaskCreated} /></div>
         ) : (
-          <div className="mt-2.5 flex border-t border-slate-100 pt-2 text-xs font-semibold text-slate-600">
-            <span className="flex flex-1 items-center justify-center gap-2"><BriefcaseBusiness className="h-4 w-4 text-orange-500" /> Task</span>
-            <span className="flex flex-1 items-center justify-center gap-2"><span className="font-bold text-emerald-600">৳</span> Budget</span>
-            <span className="flex flex-1 items-center justify-center gap-2"><ImageIcon className="h-4 w-4 text-blue-500" /> Photos</span>
+          <div className="mt-2.5 flex items-center gap-1 border-t border-slate-100 pt-2 text-xs font-semibold text-slate-600">
+            <button type="button" onClick={() => setComposerOpen(true)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-2 sm:px-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-orange-50 text-orange-600"><BriefcaseBusiness className="h-3.5 w-3.5" /></span> Task
+            </button>
+            <button type="button" onClick={() => setComposerOpen(true)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-2 sm:px-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 font-bold text-emerald-600">৳</span> Budget
+            </button>
+            <button type="button" onClick={() => setComposerOpen(true)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-2 sm:px-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600"><ImageIcon className="h-3.5 w-3.5" /></span> Photos
+            </button>
           </div>
         )}
       </section>
 
-      <section className="mb-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <section className="mb-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+        <div className="flex flex-wrap gap-2 pb-3">
           <button type="button" onClick={() => setSelectedCategory('')} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${!selectedCategory ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>All Tasks</button>
           {categories.map((category) => (
             <button key={category} type="button" onClick={() => setSelectedCategory(category)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${selectedCategory === category ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{category}</button>
           ))}
         </div>
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <label className="relative">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <label className="relative min-w-0">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input aria-label="Search tasks" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" className="h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-orange-400" />
+            <input aria-label="Search tasks" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" className="h-10 w-full min-w-0 rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-orange-400" />
           </label>
-          <input aria-label="Filter by location" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Location" className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-orange-400" />
-          <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-2.5 text-xs text-slate-500">
+          <input aria-label="Filter by location" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Location" className="h-10 w-full min-w-0 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-orange-400" />
+          <label className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-slate-200 px-2.5 text-xs text-slate-500">
             <ListFilter className="h-4 w-4 shrink-0" />
-            <select aria-label="Sort tasks" value={sort} onChange={(event) => setSort(event.target.value)} className="min-w-0 bg-transparent text-xs font-semibold text-slate-700 outline-none">
+            <select aria-label="Sort tasks" value={sort} onChange={(event) => setSort(event.target.value)} className="w-full min-w-0 bg-transparent text-xs font-semibold text-slate-700 outline-none">
               <option value="newest">Newest</option>
               <option value="deadline">Soonest deadline</option>
               <option value="budget-high">Budget: high to low</option>
               <option value="budget-low">Budget: low to high</option>
             </select>
           </label>
-          <div className="grid grid-cols-2 gap-2 sm:col-span-3 sm:grid-cols-[1fr_1fr_auto]">
-            <input aria-label="Minimum budget" type="number" min="0" value={minBudget} onChange={(event) => setMinBudget(event.target.value)} placeholder="Min budget (৳)" className="h-9 min-w-0 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-orange-400" />
-            <input aria-label="Maximum budget" type="number" min="0" value={maxBudget} onChange={(event) => setMaxBudget(event.target.value)} placeholder="Max budget (৳)" className="h-9 min-w-0 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-orange-400" />
-            <Link href="/my-tasks/posted" className="col-span-2 flex h-9 items-center justify-center rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:bg-slate-50 sm:col-span-1">My Tasks</Link>
+          <div className="grid grid-cols-1 gap-2 sm:col-span-3 sm:grid-cols-[1fr_1fr_auto]">
+            <input aria-label="Minimum budget" type="number" min="0" value={minBudget} onChange={(event) => setMinBudget(event.target.value)} placeholder="Min budget (৳)" className="h-9 w-full min-w-0 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-orange-400" />
+            <input aria-label="Maximum budget" type="number" min="0" value={maxBudget} onChange={(event) => setMaxBudget(event.target.value)} placeholder="Max budget (৳)" className="h-9 w-full min-w-0 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-orange-400" />
+            <Link href="/my-tasks/posted" className="flex h-9 items-center justify-center rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:bg-slate-50">My Tasks</Link>
           </div>
         </div>
       </section>
@@ -283,7 +281,7 @@ export default function DashboardPage() {
       <div className="space-y-4">
         {feedTasks.map((task) => <TaskCard key={task._id} task={task} />)}
         {!feedTasks.length && !loading && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-7 text-center shadow-sm">
+          <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-7 text-center shadow-xs">
             <p className="text-sm font-bold text-slate-800">No tasks match these filters</p>
             <p className="mt-1 text-xs text-slate-500">Try another category, location, or budget range.</p>
           </div>

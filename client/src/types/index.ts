@@ -195,13 +195,14 @@ export interface DashboardStats {
 }
 
 export const TASK_CATEGORIES = [
-  'Delivery',
-  'Shopping & Errands',
   'Document & Office Work',
-  'Home Services',
-  'Technology',
-  'Education',
-  'Others',
+  'Parcel & Delivery',
+  'Shopping & Purchase',
+  'Academic Services',
+  'Local Errands',
+  'Government/Institutional Assistance',
+  'Personal Assistance',
+  'Other',
 ];
 
 export const REPORT_TYPES = [

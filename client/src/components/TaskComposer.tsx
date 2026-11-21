@@ -40,7 +40,7 @@ export default function TaskComposer({
   const [photos, setPhotos] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [saving, setSaving] = useState(false);
-  const isRouteTask = ['Delivery', 'Shopping & Errands'].includes(form.category);
+  const isRouteTask = ['Parcel & Delivery', 'Shopping & Purchase'].includes(form.category);
 
   const selectPhotos = (event: React.ChangeEvent<HTMLInputElement>) => {
     const incoming = Array.from(event.target.files || []);

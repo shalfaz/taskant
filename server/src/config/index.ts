@@ -33,13 +33,14 @@ export function assertProductionConfig(): void {
 }
 
 export const TASK_CATEGORIES = [
-  'Delivery',
-  'Shopping & Errands',
   'Document & Office Work',
-  'Home Services',
-  'Technology',
-  'Education',
-  'Others',
+  'Parcel & Delivery',
+  'Shopping & Purchase',
+  'Academic Services',
+  'Local Errands',
+  'Government/Institutional Assistance',
+  'Personal Assistance',
+  'Other',
 ] as const;
 
 export const TASK_STATUSES = [

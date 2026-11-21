@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowUpRight, Bookmark, Clock, Flag, MapPin, Share2, Users } from 'lucide-react';
+import { ArrowUpRight, Bookmark, Clock, Flag, MapPin, Share2, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,7 +9,15 @@ import { REPORT_TYPES, type Task } from '../types';
 import { VerifiedBadge } from './ui/Card';
 import { formatCurrency, formatDate, timeAgo } from '../utils/format';
 
-export default function TaskCard({ task, showActions = true }: { task: Task; showActions?: boolean }) {
+export default function TaskCard({
+  task,
+  showActions = true,
+  onDelete,
+}: {
+  task: Task;
+  showActions?: boolean;
+  onDelete?: (taskId: string) => Promise<void> | void;
+}) {
   const { user } = useAuth();
   const key = user ? `taskant_saved_${user._id}` : '';
   const [saved, setSaved] = useState(() => {
@@ -20,6 +28,7 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
   const [reportType, setReportType] = useState(REPORT_TYPES[0]);
   const [reportDescription, setReportDescription] = useState('');
   const [reporting, setReporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const toggleSaved = () => {
     if (!key) return;
     let ids: string[] = [];
@@ -78,8 +87,19 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
     }
   };
 
+  const handleDelete = async () => {
+    if (!onDelete || deleting) return;
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    setDeleting(true);
+    try {
+      await onDelete(task._id);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
       <header className="flex items-center gap-3 px-4 pt-3.5">
         <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-900 text-sm font-bold text-white">{task.poster?.profilePhoto ? <Image src={task.poster.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized /> : posterName.charAt(0)}</div>
         <div className="min-w-0 flex-1">
@@ -88,6 +108,18 @@ export default function TaskCard({ task, showActions = true }: { task: Task; sho
         </div>
         {!isPreview && user && <button type="button" aria-label={saved ? 'Remove saved task' : 'Save task'} onClick={toggleSaved} title={saved ? 'Remove saved task' : 'Save task'} className={`flex h-8 w-8 items-center justify-center rounded-full ${saved ? 'bg-orange-50 text-orange-600' : 'text-slate-400 hover:bg-slate-100'}`}><Bookmark className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} /></button>}
         {!isPreview && <button type="button" aria-label="Share task" onClick={() => void shareTask()} title="Share task" className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"><Share2 className="h-4 w-4" /></button>}
+        {!isPreview && isOwner && onDelete && (
+          <button
+            type="button"
+            disabled={deleting}
+            aria-label="Delete task"
+            title="Delete task"
+            onClick={() => void handleDelete()}
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </header>
 
       <div className="px-4 pb-3 pt-3">
