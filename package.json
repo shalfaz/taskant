@@ -12,6 +12,7 @@
     "seed": "tsx server/src/seed/index.ts"
   },
   "dependencies": {
+    "@google/genai": "^3.6.1",
     "axios": "^1.7.9",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.11.0",
